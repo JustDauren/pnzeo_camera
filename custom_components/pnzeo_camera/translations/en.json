@@ -1,0 +1,41 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "PNZEO Camera",
+        "description": "Add a PNZEO camera to Home Assistant",
+        "data": {
+          "method": "Setup method"
+        }
+      },
+      "manual": {
+        "title": "Camera IP",
+        "data": {
+          "host": "IP Address"
+        }
+      },
+      "pick": {
+        "title": "Select Camera",
+        "data": {
+          "ip": "Camera"
+        }
+      },
+      "credentials": {
+        "title": "Camera Credentials",
+        "data": {
+          "username": "Username",
+          "password": "Password",
+          "device_id": "Device ID (optional)",
+          "rtsp_port": "RTSP Port"
+        }
+      }
+    },
+    "abort": {
+      "no_devices_found": "No PNZEO cameras found on the network",
+      "already_configured": "This camera is already configured"
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to camera. Check IP and port."
+    }
+  }
+}
