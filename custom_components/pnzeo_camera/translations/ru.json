@@ -1,0 +1,114 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "PNZEO Камера",
+        "description": "Добавить камеру PNZEO в Home Assistant",
+        "data": {
+          "method": "Способ настройки"
+        },
+        "data_description": {
+          "method": "Выберите автопоиск или ручной ввод IP"
+        }
+      },
+      "manual": {
+        "title": "IP адрес камеры",
+        "data": {
+          "host": "IP адрес"
+        }
+      },
+      "pick": {
+        "title": "Выберите камеру",
+        "data": {
+          "ip": "Камера"
+        }
+      },
+      "credentials": {
+        "title": "Данные для входа",
+        "data": {
+          "username": "Логин",
+          "password": "Пароль",
+          "device_id": "ID устройства (необязательно)",
+          "rtsp_port": "RTSP порт"
+        }
+      }
+    },
+    "abort": {
+      "no_devices_found": "Камеры PNZEO не найдены в сети",
+      "already_configured": "Эта камера уже настроена"
+    },
+    "error": {
+      "cannot_connect": "Не удалось подключиться. Проверьте IP и порт."
+    }
+  },
+  "entity": {
+    "switch": {
+      "ir_led": { "name": "ИК подсветка" },
+      "motion_detection": { "name": "Детекция движения" },
+      "sd_recording": { "name": "Запись на SD" },
+      "indicator_led": { "name": "Индикатор LED" }
+    },
+    "button": {
+      "reboot": { "name": "Перезагрузка" },
+      "snapshot": { "name": "Снимок" },
+      "format_sd": { "name": "Форматировать SD" }
+    },
+    "number": {
+      "brightness": { "name": "Яркость" },
+      "contrast": { "name": "Контраст" }
+    },
+    "select": {
+      "resolution": { "name": "Разрешение" },
+      "mirror": { "name": "Зеркало" }
+    },
+    "camera": {
+      "camera": { "name": "Камера" }
+    }
+  },
+  "services": {
+    "ptz_control": {
+      "name": "Управление PTZ",
+      "description": "Поворот/наклон/зум камеры",
+      "fields": {
+        "direction": {
+          "name": "Направление",
+          "description": "up, down, left, right, center, zoom_in, zoom_out, patrol_lr, patrol_ud"
+        },
+        "step": {
+          "name": "Режим шага",
+          "description": "0 = непрерывно, 1 = один шаг"
+        }
+      }
+    },
+    "goto_preset": {
+      "name": "Перейти к пресету",
+      "description": "Переместить камеру в сохранённую позицию",
+      "fields": {
+        "preset": {
+          "name": "Номер пресета",
+          "description": "Позиция 0-15"
+        }
+      }
+    },
+    "set_preset": {
+      "name": "Сохранить пресет",
+      "description": "Сохранить текущую позицию камеры",
+      "fields": {
+        "preset": {
+          "name": "Номер пресета",
+          "description": "Слот для сохранения 0-15"
+        }
+      }
+    },
+    "send_command": {
+      "name": "Отправить команду",
+      "description": "Отправить PPPP команду камере (для продвинутых)",
+      "fields": {
+        "msg_type": {
+          "name": "Тип сообщения",
+          "description": "ID команды PPPP протокола"
+        }
+      }
+    }
+  }
+}

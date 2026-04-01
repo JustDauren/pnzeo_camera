@@ -35,8 +35,8 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema({
                 vol.Required("method", default="manual"): vol.In({
-                    "manual": "Manual (enter IP address)",
-                    "discover": "Auto-discover on LAN",
+                    "manual": "Вручную (ввести IP)",
+                    "discover": "Автопоиск в сети",
                 }),
             }),
         )
