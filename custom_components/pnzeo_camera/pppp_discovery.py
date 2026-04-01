@@ -1,60 +1,90 @@
-"""PNZEO camera LAN discovery via PPPP UDP broadcast."""
+"""PNZEO camera LAN discovery via RTSP port scan."""
 from __future__ import annotations
 
 import asyncio
 import logging
 import socket
 
-from .pppp_packets import build_lan_search, parse_lan_search_ack
-
 _LOGGER = logging.getLogger(__name__)
-DISCOVERY_PORT = 32108
-DISCOVERY_TIMEOUT = 5
+RTSP_PORT = 554
+DISCOVERY_TIMEOUT = 8
 
 
 async def discover_cameras(timeout: float = DISCOVERY_TIMEOUT) -> list[dict]:
-    """Discover PNZEO cameras on LAN via UDP broadcast."""
+    """Discover cameras on LAN by scanning for open RTSP port 554.
+
+    Scans the local /24 subnet for hosts with port 554 open,
+    then verifies RTSP response contains valid stream.
+    """
     found: list[dict] = []
-    loop = asyncio.get_event_loop()
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.setblocking(False)
+    # Get local IP to determine subnet
+    local_ip = _get_local_ip()
+    if not local_ip:
+        _LOGGER.warning("Cannot determine local IP for discovery")
+        return found
 
-    try:
-        sock.sendto(build_lan_search(), ("255.255.255.255", DISCOVERY_PORT))
+    subnet = ".".join(local_ip.split(".")[:3])
+    _LOGGER.info("Scanning %s.0/24 for RTSP cameras...", subnet)
 
-        end_time = loop.time() + timeout
-        while loop.time() < end_time:
-            try:
-                data, addr = await asyncio.wait_for(
-                    loop.sock_recvfrom(sock, 1024),
-                    timeout=min(1.0, end_time - loop.time()),
-                )
-                result = parse_lan_search_ack(data)
-                if result:
-                    result["ip"] = addr[0]
-                    result["port"] = addr[1]
-                    if not any(d["device_id"] == result["device_id"] for d in found):
-                        found.append(result)
-                        _LOGGER.info("Discovered PNZEO camera: %s at %s", result["device_id"], addr[0])
-            except asyncio.TimeoutError:
-                continue
-            except Exception:
-                break
-    finally:
-        sock.close()
+    # Scan all IPs in parallel
+    tasks = []
+    for i in range(1, 255):
+        ip = f"{subnet}.{i}"
+        if ip == local_ip:
+            continue
+        tasks.append(_probe_rtsp(ip, RTSP_PORT, timeout=3))
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    for ip_result in results:
+        if isinstance(ip_result, dict):
+            found.append(ip_result)
+            _LOGGER.info("Discovered camera: %s", ip_result["ip"])
 
     return found
+
+
+async def _probe_rtsp(host: str, port: int = 554, timeout: float = 3) -> dict | None:
+    """Check if host has RTSP open and responds."""
+    try:
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_connection(host, port), timeout=timeout
+        )
+        # Send RTSP OPTIONS to verify it's a real RTSP server
+        writer.write(b"OPTIONS rtsp://%b:554/ RTSP/1.0\r\nCSeq: 1\r\n\r\n" % host.encode())
+        await writer.drain()
+        data = await asyncio.wait_for(reader.read(512), timeout=2)
+        writer.close()
+        await writer.wait_closed()
+
+        if b"RTSP" in data:
+            return {"ip": host, "port": port, "device_id": f"PNZEO_{host.split('.')[-1]}"}
+    except Exception:
+        pass
+    return None
 
 
 async def check_rtsp(host: str, port: int = 554, timeout: float = 3) -> bool:
     """Check if RTSP port is open."""
     try:
-        _, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=timeout)
+        _, writer = await asyncio.wait_for(
+            asyncio.open_connection(host, port), timeout=timeout
+        )
         writer.close()
         await writer.wait_closed()
         return True
     except Exception:
         return False
+
+
+def _get_local_ip() -> str | None:
+    """Get local IP address."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return None
