@@ -18,18 +18,19 @@ async def async_setup_entry(
 ) -> None:
     coordinator: PNZEOCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([
-        PNZEOIRSwitch(coordinator),
+        PNZEONightVisionSwitch(coordinator),
         PNZEOMotionSwitch(coordinator),
         PNZEORecordingSwitch(coordinator),
         PNZEOLEDSwitch(coordinator),
     ])
 
 
-class PNZEOIRSwitch(PNZEOEntity, SwitchEntity):
-    _attr_icon = "mdi:lightbulb-night"
+class PNZEONightVisionSwitch(PNZEOEntity, SwitchEntity):
+    """Night vision / IR LED toggle."""
+    _attr_icon = "mdi:weather-night"
 
     def __init__(self, coordinator: PNZEOCoordinator) -> None:
-        super().__init__(coordinator, "ir_led", "IR LED")
+        super().__init__(coordinator, "night_vision", "Ночной режим")
         self._is_on = False
 
     @property
@@ -48,10 +49,11 @@ class PNZEOIRSwitch(PNZEOEntity, SwitchEntity):
 
 
 class PNZEOMotionSwitch(PNZEOEntity, SwitchEntity):
+    """Motion detection toggle."""
     _attr_icon = "mdi:motion-sensor"
 
     def __init__(self, coordinator: PNZEOCoordinator) -> None:
-        super().__init__(coordinator, "motion_detection", "Motion Detection")
+        super().__init__(coordinator, "motion_detection", "Детекция движения")
         self._is_on = True
 
     @property
@@ -70,10 +72,11 @@ class PNZEOMotionSwitch(PNZEOEntity, SwitchEntity):
 
 
 class PNZEORecordingSwitch(PNZEOEntity, SwitchEntity):
+    """SD card recording toggle."""
     _attr_icon = "mdi:record-rec"
 
     def __init__(self, coordinator: PNZEOCoordinator) -> None:
-        super().__init__(coordinator, "sd_recording", "SD Recording")
+        super().__init__(coordinator, "sd_recording", "Запись на SD")
         self._is_on = False
 
     @property
@@ -81,21 +84,22 @@ class PNZEORecordingSwitch(PNZEOEntity, SwitchEntity):
         return self._is_on
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        await self.coordinator.device.client.set_recording_mode(1)  # continuous
+        await self.coordinator.device.client.set_recording_mode(1)
         self._is_on = True
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self.coordinator.device.client.set_recording_mode(0)  # off
+        await self.coordinator.device.client.set_recording_mode(0)
         self._is_on = False
         self.async_write_ha_state()
 
 
 class PNZEOLEDSwitch(PNZEOEntity, SwitchEntity):
+    """Camera indicator LED toggle."""
     _attr_icon = "mdi:led-on"
 
     def __init__(self, coordinator: PNZEOCoordinator) -> None:
-        super().__init__(coordinator, "indicator_led", "Indicator LED")
+        super().__init__(coordinator, "indicator_led", "Индикатор LED")
         self._is_on = True
 
     @property
