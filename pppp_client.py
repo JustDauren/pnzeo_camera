@@ -13,6 +13,7 @@ Camera does NOT need internet — only Pi5 makes one outbound UDP query.
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import logging
 import random
 import socket
@@ -36,6 +37,9 @@ from .pppp_packets import (
     CGI_GET_ALARM, CGI_GET_ALARM_EX, CGI_SET_ALARM_EX, CGI_GET_ALARM_LOG,
     CGI_PARAM_BRIGHTNESS, CGI_PARAM_CONTRAST, CGI_PARAM_IR_CUT,
     CGI_PARAM_STATUS_LED, CGI_PARAM_MIRROR, CGI_PARAM_RESOLUTION,
+    CGI_PARAM_POWER_FREQ,
+    CGI_GET_IRCUT, CGI_SET_IRCUT, CGI_SET_DEVNAME,
+    CGI_SET_DATETIME, CGI_START_RECORDING,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -619,6 +623,72 @@ class PNZEOClient:
     async def set_recording_mode(self, mode: int) -> bool:
         cgi = build_cgi_url("set_record_param.cgi", self.username, self.password,
                             rec_mode=mode)
+        return bool((r := await self._send_cgi(cgi)) and r.get("success"))
+
+    # =====================================================================
+    # Camera settings (IR, power freq, device name, time sync, recording)
+    # =====================================================================
+
+    async def get_ircut_params(self) -> dict[str, Any]:
+        """Get IR cut parameters (mode, sensitivity, timing)."""
+        cgi = build_cgi_url(CGI_GET_IRCUT, self.username, self.password)
+        resp = await self._send_cgi(cgi)
+        if resp and resp.get("success"):
+            ircut = {k: v for k, v in resp.items()
+                     if k.startswith("ircut_") or k in ("ircut_mode",)}
+            self._camera_params.update(ircut)
+        return self._camera_params
+
+    async def set_ircut_params(self, **kwargs) -> bool:
+        """Set IR cut parameters.
+
+        Accepts: ircut_mode (0=auto, 1=on, 2=off),
+                 ircut_sensitivity, ircut_day_start, ircut_day_end, ircut_night_start.
+        Falls back to camera_control for basic mode setting if full CGI unavailable.
+        """
+        mode = kwargs.get("ircut_mode")
+
+        # Try full IR cut CGI first
+        if len(kwargs) > 1 or mode is None:
+            cgi = build_cgi_url(CGI_SET_IRCUT, self.username, self.password, **kwargs)
+            resp = await self._send_cgi(cgi)
+            if resp and resp.get("success"):
+                return True
+
+        # Fallback: use camera_control.cgi param=14 for basic mode
+        if mode is not None:
+            return await self.camera_control(CGI_PARAM_IR_CUT, int(mode))
+
+        return False
+
+    async def set_power_freq(self, freq: int) -> bool:
+        """Set power frequency (anti-flicker). 0=50Hz, 1=60Hz."""
+        return await self.camera_control(CGI_PARAM_POWER_FREQ, freq)
+
+    async def set_device_name(self, name: str) -> bool:
+        """Set camera device name."""
+        cgi = build_cgi_url(CGI_SET_DEVNAME, self.username, self.password,
+                            devname=name)
+        return bool((r := await self._send_cgi(cgi)) and r.get("success"))
+
+    async def sync_time(self) -> bool:
+        """Synchronize camera time with system time."""
+        now = dt.datetime.now()
+        # Calculate timezone offset in hours
+        utc_offset = now.astimezone().utcoffset()
+        tz_hours = int(utc_offset.total_seconds() // 3600) if utc_offset else 0
+        cgi = build_cgi_url(
+            CGI_SET_DATETIME, self.username, self.password,
+            year=now.year, mon=now.month, day=now.day,
+            hour=now.hour, min=now.minute, sec=now.second,
+            tz=tz_hours,
+        )
+        return bool((r := await self._send_cgi(cgi)) and r.get("success"))
+
+    async def start_recording(self) -> bool:
+        """Trigger manual recording on camera SD card."""
+        cgi = build_cgi_url(CGI_START_RECORDING, self.username, self.password,
+                            rec_mode=1, rec_channel=1)
         return bool((r := await self._send_cgi(cgi)) and r.get("success"))
 
     async def ptz_control(self, direction: int, step: int = 1) -> bool:

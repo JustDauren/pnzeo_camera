@@ -714,6 +714,24 @@ CGI_SNAPSHOT = "snapshot.cgi"
 CGI_GET_ALARM_EX = "get_alarm_ex.cgi"
 CGI_SET_ALARM_EX = "set_alarm_ex.cgi"
 CGI_GET_ALARM_LOG = "get_alarm_log.cgi"
+CGI_GET_IRCUT = "get_ircut_params.cgi"
+CGI_SET_IRCUT = "set_ircut.cgi"
+CGI_SET_DEVNAME = "set_devname.cgi"
+CGI_SET_MOBILETIME = "set_mobiletime.cgi"
+CGI_START_RECORDING = "set_record_param.cgi"
+
+# IR night vision mode map
+IR_MODE_MAP = {
+    0: "Auto",
+    1: "On",
+    2: "Off",
+}
+
+# Power frequency map (anti-flicker)
+POWER_FREQ_MAP = {
+    0: "50Hz",
+    1: "60Hz",
+}
 
 # Camera control param IDs (for camera_control.cgi?param=X&value=Y)
 CGI_PARAM_RESOLUTION = 0
