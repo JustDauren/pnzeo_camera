@@ -190,3 +190,108 @@ def _register_services(hass: HomeAssistant) -> None:
         DOMAIN, "start_recording", handle_start_recording,
         schema=vol.Schema({}),
     )
+
+    # WiFi, network, and user management services (02-03)
+
+    async def handle_wifi_scan(call: ServiceCall) -> None:
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                networks = await coordinator.device.client.wifi_scan()
+                hass.bus.async_fire(
+                    f"{DOMAIN}_wifi_scan_result", {"networks": networks},
+                )
+                break
+
+    hass.services.async_register(
+        DOMAIN, "wifi_scan", handle_wifi_scan,
+        schema=vol.Schema({}),
+    )
+
+    async def handle_wifi_connect(call: ServiceCall) -> None:
+        ssid = call.data["ssid"]
+        password = call.data["password"]
+        security = call.data.get("security", 3)
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                await coordinator.device.client.set_wifi(ssid, password, security)
+                break
+
+    hass.services.async_register(
+        DOMAIN, "wifi_connect", handle_wifi_connect,
+        schema=vol.Schema({
+            vol.Required("ssid"): str,
+            vol.Required("password"): str,
+            vol.Optional("security", default=3): vol.In([0, 1, 2, 3]),
+        }),
+    )
+
+    async def handle_set_ddns(call: ServiceCall) -> None:
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                await coordinator.device.client.set_ddns(
+                    service=call.data["service"],
+                    hostname=call.data["hostname"],
+                    user=call.data["user"],
+                    password=call.data["password"],
+                    port=call.data.get("port", 80),
+                )
+                break
+
+    hass.services.async_register(
+        DOMAIN, "set_ddns", handle_set_ddns,
+        schema=vol.Schema({
+            vol.Required("service"): str,
+            vol.Required("hostname"): str,
+            vol.Required("user"): str,
+            vol.Required("password"): str,
+            vol.Optional("port", default=80): int,
+        }),
+    )
+
+    async def handle_get_users(call: ServiceCall) -> None:
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                users = await coordinator.device.client.get_users()
+                hass.bus.async_fire(
+                    f"{DOMAIN}_users_result", {"users": users},
+                )
+                break
+
+    hass.services.async_register(
+        DOMAIN, "get_users", handle_get_users,
+        schema=vol.Schema({}),
+    )
+
+    async def handle_manage_users(call: ServiceCall) -> None:
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                client = coordinator.device.client
+                success = await client.set_users(
+                    user1=call.data.get("user1", ""),
+                    pwd1=call.data.get("pwd1", ""),
+                    user2=call.data.get("user2", ""),
+                    pwd2=call.data.get("pwd2", ""),
+                    user3=call.data.get("user3", ""),
+                    pwd3=call.data.get("pwd3", ""),
+                )
+                if success and call.data.get("user1") and call.data.get("pwd1"):
+                    # Update stored password if primary user changed
+                    entry_id = next(iter(hass.data[DOMAIN]))
+                    entry = hass.config_entries.async_get_entry(entry_id)
+                    if entry and call.data["user1"] == client.username:
+                        new_data = dict(entry.data)
+                        new_data[CONF_PASSWORD] = call.data["pwd1"]
+                        hass.config_entries.async_update_entry(entry, data=new_data)
+                break
+
+    hass.services.async_register(
+        DOMAIN, "manage_users", handle_manage_users,
+        schema=vol.Schema({
+            vol.Optional("user1", default=""): str,
+            vol.Optional("pwd1", default=""): str,
+            vol.Optional("user2", default=""): str,
+            vol.Optional("pwd2", default=""): str,
+            vol.Optional("user3", default=""): str,
+            vol.Optional("pwd3", default=""): str,
+        }),
+    )

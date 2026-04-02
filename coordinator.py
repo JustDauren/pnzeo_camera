@@ -69,6 +69,19 @@ class PNZEOCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     await asyncio.wait_for(client.get_ircut_params(), timeout=5.0)
                 except (asyncio.TimeoutError, Exception):
                     _LOGGER.debug("IR cut params polling failed or timed out")
+                # WiFi and network change rarely -- poll every 5th cycle to save Pi5 budget
+                if not hasattr(self, "_poll_counter"):
+                    self._poll_counter = 0
+                self._poll_counter += 1
+                if self._poll_counter % 5 == 0:
+                    try:
+                        await asyncio.wait_for(client.get_wifi_params(), timeout=5.0)
+                    except (asyncio.TimeoutError, Exception):
+                        _LOGGER.debug("WiFi params polling failed or timed out")
+                    try:
+                        await asyncio.wait_for(client.get_network_params(), timeout=5.0)
+                    except (asyncio.TimeoutError, Exception):
+                        _LOGGER.debug("Network params polling failed or timed out")
                 self._pppp_available = True
                 return self._build_data(client)
             except Exception as ex:
