@@ -7,9 +7,9 @@
 
 ### Connection Reliability
 
-- [ ] **CONN-01**: Camera auto-reconnects on disconnect with exponential backoff
-- [ ] **CONN-02**: Keepalive task never dies silently -- watchdog and logging
-- [ ] **CONN-03**: Socket lifecycle managed with context managers / try-finally
+- [x] **CONN-01**: Camera auto-reconnects on disconnect with exponential backoff
+- [x] **CONN-02**: Keepalive task never dies silently -- watchdog and logging
+- [x] **CONN-03**: Socket lifecycle managed with context managers / try-finally
 - [ ] **CONN-04**: Connection status exposed as binary_sensor (connected/disconnected)
 - [x] **CONN-05**: Protocol state machine uses explicit ConnectionState enum
 
@@ -124,9 +124,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CONN-01 | Phase 1 | Pending |
-| CONN-02 | Phase 1 | Pending |
-| CONN-03 | Phase 1 | Pending |
+| CONN-01 | Phase 1 | Complete |
+| CONN-02 | Phase 1 | Complete |
+| CONN-03 | Phase 1 | Complete |
 | CONN-04 | Phase 3 | Pending |
 | CONN-05 | Phase 1 | Complete |
 | CONF-01 | Phase 6 | Pending |

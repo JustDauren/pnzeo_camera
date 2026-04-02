@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-04-02T14:41:09.069Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-04-02T14:49:27.874Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 ## Current Position
 
 Phase: 01 (connection-reliability) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-02
 
@@ -53,6 +53,7 @@ Progress: [..........] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 14min | 2 tasks | 6 files |
+| Phase 01 P02 | 5min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,9 @@ Recent decisions affecting current work:
 - [Phase 01]: ConnectionState uses IntEnum for numeric comparison support
 - [Phase 01]: tests/ has no __init__.py -- standard HA custom component testing pattern to avoid triggering pnzeo_camera/__init__.py import chain
 - [Phase 01]: HA dependencies mocked via sys.modules in tests/conftest.py for testing without full HA stack
+- [Phase 01]: _send_cgi allows CONNECTED and AUTHENTICATING states for CGI login during connection flow
+- [Phase 01]: _cleanup_transport() is state-agnostic; state transitions are explicit via _set_state() only
+- [Phase 01]: Watchdog triggers reconnect after 3 consecutive keepalive failures, not on first failure
 
 ### Pending Todos
 
@@ -79,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T14:41:09.067Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-04-02T14:49:27.871Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
