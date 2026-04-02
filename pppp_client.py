@@ -132,9 +132,10 @@ class PNZEOClient:
                 await self._cleanup()
                 return False
 
-            _LOGGER.info(
-                "PPPP: discovered port %d for %s, punching...",
+            _LOGGER.warning(
+                "PPPP DEBUG: discovered port %d for %s, our socket=%s, punching...",
                 self._cam_port, self.host,
+                self._transport.get_extra_info('sockname') if self._transport else '?',
             )
             target = (self.host, self._cam_port)
 
@@ -152,7 +153,7 @@ class PNZEOClient:
                     self._transport.sendto(build_alive(), target)
                 await asyncio.sleep(PUNCH_INTERVAL)
                 if self._protocol.got_p2p_rdy:
-                    _LOGGER.info("PPPP: P2P handshake OK after %d punches", i + 1)
+                    _LOGGER.warning("PPPP DEBUG: P2P handshake OK after %d punches!", i + 1)
                     break
 
             # Wait more if not yet ready
@@ -380,9 +381,9 @@ class _PNZEOProtocol(asyncio.DatagramProtocol):
             return
 
         pkt_type = data[1]
-        # Log all non-keepalive packets for debugging
+        # Log ALL packets for debugging
         if pkt_type not in (PktType.ALIVE, PktType.ALIVE_ACK):
-            _LOGGER.debug(
+            _LOGGER.warning(
                 "PPPP RX: F1%02X from %s:%d (%dB)",
                 pkt_type, addr[0], addr[1], len(data),
             )
