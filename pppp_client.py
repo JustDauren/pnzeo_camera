@@ -1,16 +1,20 @@
-"""Async PPPP client for PNZEO/MTC cameras — 100% LAN, zero cloud.
+"""Async PPPP client for PNZEO/MTC cameras.
 
-How it works:
-1. LAN Search (F130 → 32108) → camera responds from its P2P port
-2. F141 PUNCH with UID → same socket → P2P handshake (F142/F143)
-3. CGI commands via DRW → same socket → full camera control
+Connection flow:
+1. LAN Search (F130 → 32108) → camera responds with P2P signaling port
+2. Cloud query (1 UDP to P2P server) → get camera's DRW data port
+3. F141 PUNCH to DRW port → P2P handshake
+4. CGI commands via DRW → full camera control on LAN
 
-No cloud, no relay, no internet. Single UDP socket for entire session.
+Cloud is used ONLY for port discovery (1 UDP query, 3 seconds).
+All actual camera data stays 100% on LAN.
+Camera does NOT need internet — only Pi5 makes one outbound UDP query.
 """
 from __future__ import annotations
 
 import asyncio
 import logging
+import socket
 import struct
 from typing import Any
 
@@ -30,20 +34,20 @@ from .pppp_packets import (
 _LOGGER = logging.getLogger(__name__)
 
 KEEPALIVE_INTERVAL = 3
-PUNCH_COUNT = 15       # Camera needs persistent punching
-PUNCH_INTERVAL = 0.12
-DRW_RETRY_MAX = 35
+PUNCH_COUNT = 12
+PUNCH_INTERVAL = 0.15
+DRW_RETRY_MAX = 25
 DRW_RETRY_INTERVAL = 0.3
 LAN_SEARCH_PORT = 32108
-PUNCH_WAIT = 5.0       # Wait for P2P handshake response
+CLOUD_TIMEOUT = 3
+CLOUD_P2P_SERVERS = [
+    ("54.186.48.247", 32100),
+    ("54.191.3.239", 32100),
+]
 
 
 class PNZEOClient:
-    """Async PPPP client — pure LAN, zero cloud dependency.
-
-    Uses a SINGLE unconnected UDP socket for the entire lifecycle:
-    discovery → punch → keepalive → commands.
-    """
+    """Async PPPP client for camera control."""
 
     def __init__(self, host: str, username: str, password: str,
                  device_id: str = "", **kwargs) -> None:
@@ -81,32 +85,39 @@ class PNZEOClient:
         return self._capabilities
 
     # =====================================================================
-    # Connection — single socket, pure LAN
+    # Connection
     # =====================================================================
 
     async def connect(self) -> bool:
-        """Connect to camera. Single UDP socket for everything.
-
-        Retries once if first attempt fails (camera may need time
-        to release previous session after HA restart).
-        """
+        """Connect to camera. Retries once on failure."""
         for attempt in range(2):
             result = await self._do_connect()
             if result:
                 return True
             if attempt == 0:
-                _LOGGER.debug("First connect attempt failed, retrying in 3s...")
-                await asyncio.sleep(3)
+                await asyncio.sleep(2)
         return False
 
     async def _do_connect(self) -> bool:
         """Single connection attempt."""
         try:
             await self._cleanup()
+
+            # Step 1: Get DRW port from cloud (1 UDP query)
+            drw_port = await self._cloud_discover_port()
+            if not drw_port:
+                _LOGGER.debug("Cloud port discovery failed, trying LAN only")
+                drw_port = await self._lan_discover_port()
+
+            if not drw_port:
+                _LOGGER.warning("Cannot discover camera port for %s", self.host)
+                return False
+
+            self._cam_port = drw_port
+
+            # Step 2: Create socket and do P2P punch
             loop = asyncio.get_running_loop()
             self._protocol = _PNZEOProtocol(self)
-
-            # Create ONE unconnected UDP socket (can send to any addr)
             self._transport, _ = await asyncio.wait_for(
                 loop.create_datagram_endpoint(
                     lambda: self._protocol,
@@ -115,72 +126,39 @@ class PNZEOClient:
                 timeout=5,
             )
 
-            # Step 1: LAN Search → discover P2P port
-            self._drw_response.clear()
-            self._transport.sendto(
-                build_lan_search(), (self.host, LAN_SEARCH_PORT),
-            )
-            try:
-                await asyncio.wait_for(self._drw_response.wait(), timeout=3.0)
-            except asyncio.TimeoutError:
-                _LOGGER.warning("Camera %s not found on LAN", self.host)
-                await self._cleanup()
-                return False
-
-            if not self._cam_port:
-                _LOGGER.warning("No P2P port discovered for %s", self.host)
-                await self._cleanup()
-                return False
-
-            _LOGGER.warning(
-                "PPPP DEBUG: discovered port %d for %s, our socket=%s, punching...",
-                self._cam_port, self.host,
-                self._transport.get_extra_info('sockname') if self._transport else '?',
-            )
             target = (self.host, self._cam_port)
+            uid = encode_uid(self.device_id)
+            punch = struct.pack(">BBH", 0xF1, PktType.PUNCH_PKT, len(uid)) + uid
 
-            # Step 2: P2P handshake
-            # F141 from discovery already counts as handshake.
-            # If not ready yet, send explicit punches.
-            if not self._protocol.got_p2p_rdy:
-                uid = encode_uid(self.device_id)
-                punch = struct.pack(">BBH", 0xF1, PktType.PUNCH_PKT, len(uid)) + uid
-
-                self._drw_response.clear()
-                for i in range(PUNCH_COUNT):
-                    self._transport.sendto(punch, target)
-                    if i % 3 == 2:
-                        self._transport.sendto(build_alive(), target)
-                    await asyncio.sleep(PUNCH_INTERVAL)
-                    if self._protocol.got_p2p_rdy:
-                        break
-
-                if not self._protocol.got_p2p_rdy:
-                    try:
-                        await asyncio.wait_for(
-                            self._drw_response.wait(), timeout=PUNCH_WAIT,
-                        )
-                    except asyncio.TimeoutError:
-                        pass
-
-            if self._protocol.got_p2p_rdy:
-                _LOGGER.warning("PPPP: P2P handshake OK with %s:%d", self.host, self._cam_port)
+            self._drw_response.clear()
+            for i in range(PUNCH_COUNT):
+                self._transport.sendto(punch, target)
+                if i % 3 == 2:
+                    self._transport.sendto(build_alive(), target)
+                await asyncio.sleep(PUNCH_INTERVAL)
+                if self._protocol.got_p2p_rdy:
+                    break
 
             if not self._protocol.got_p2p_rdy:
-                _LOGGER.warning(
-                    "P2P handshake failed with %s:%d", self.host, self._cam_port,
-                )
+                try:
+                    await asyncio.wait_for(self._drw_response.wait(), timeout=3.0)
+                except asyncio.TimeoutError:
+                    pass
+
+            if not self._protocol.got_p2p_rdy:
+                _LOGGER.warning("P2P handshake failed with %s:%d", self.host, self._cam_port)
                 await self._cleanup()
                 return False
 
             self._connected = True
+            _LOGGER.debug("P2P handshake OK with %s:%d", self.host, self._cam_port)
 
-            # Send keepalive burst to stabilize channel before CGI
-            for _ in range(10):
+            # Keepalive burst before CGI
+            for _ in range(8):
                 self._transport.sendto(build_alive(), target)
                 await asyncio.sleep(0.15)
 
-            # Step 3: CGI login (same socket!)
+            # Step 3: CGI login
             if not await self._cgi_login():
                 _LOGGER.warning("CGI login failed on %s:%d", self.host, self._cam_port)
                 await self._cleanup()
@@ -189,9 +167,7 @@ class PNZEOClient:
             self._authenticated = True
             self._connection_method = "lan"
             self._keepalive_task = asyncio.create_task(self._keepalive_loop())
-            _LOGGER.info(
-                "Connected to camera %s on LAN (port %d)", self.host, self._cam_port,
-            )
+            _LOGGER.info("Connected to camera %s (port %d)", self.host, self._cam_port)
             return True
 
         except Exception as ex:
@@ -209,9 +185,7 @@ class PNZEOClient:
             self._keepalive_task = None
         if self._transport and self._cam_port:
             try:
-                self._transport.sendto(
-                    build_close(), (self.host, self._cam_port),
-                )
+                self._transport.sendto(build_close(), (self.host, self._cam_port))
             except Exception:
                 pass
         await self._cleanup()
@@ -229,7 +203,66 @@ class PNZEOClient:
         self._connection_method = "none"
 
     # =====================================================================
-    # CGI Commands (all use same socket via _send_cgi)
+    # Port Discovery
+    # =====================================================================
+
+    async def _cloud_discover_port(self) -> int | None:
+        """Get camera's DRW port from cloud P2P server (1 UDP query, ~3s)."""
+        if not self.device_id:
+            return None
+        uid = encode_uid(self.device_id)
+
+        for server_host, server_port in CLOUD_P2P_SERVERS:
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.settimeout(CLOUD_TIMEOUT)
+
+                # Hello
+                sock.sendto(b"\xf1\x00\x00\x00", (server_host, server_port))
+                sock.recvfrom(4096)
+
+                # P2P Connect
+                p2p_payload = uid + b"\x00" * 16
+                p2p = struct.pack(">BBH", 0xF1, 0x20, len(p2p_payload)) + p2p_payload
+                sock.sendto(p2p, (server_host, server_port))
+
+                # Wait for F140 with camera's LAN IP:port
+                for _ in range(5):
+                    data, _ = sock.recvfrom(4096)
+                    if len(data) >= 12 and data[0] == 0xF1 and data[1] == 0x40:
+                        payload = data[4:]
+                        if len(payload) >= 8:
+                            port = struct.unpack("<H", payload[2:4])[0]
+                            ip_val = struct.unpack("<I", payload[4:8])[0]
+                            ip = socket.inet_ntoa(struct.pack("!I", ip_val))
+                            if ip == self.host:
+                                sock.close()
+                                _LOGGER.debug("Cloud: camera DRW port = %d", port)
+                                return port
+                sock.close()
+            except Exception as ex:
+                _LOGGER.debug("Cloud discovery via %s failed: %s", server_host, ex)
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+        return None
+
+    async def _lan_discover_port(self) -> int | None:
+        """Fallback: get port from LAN Search response."""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.settimeout(3)
+            sock.sendto(build_lan_search(), (self.host, LAN_SEARCH_PORT))
+            _, (_, port) = sock.recvfrom(4096)
+            sock.close()
+            _LOGGER.debug("LAN: camera port = %d", port)
+            return port
+        except Exception:
+            return None
+
+    # =====================================================================
+    # CGI Commands
     # =====================================================================
 
     async def _cgi_login(self) -> bool:
@@ -239,8 +272,6 @@ class PNZEOClient:
             if "json" in resp:
                 self._capabilities = resp["json"]
             return True
-        if resp and resp.get("result") == -1:
-            return False
         return False
 
     async def login(self, username: str, password: str) -> bool:
@@ -271,7 +302,7 @@ class PNZEOClient:
         return None
 
     # =====================================================================
-    # Camera control commands
+    # Camera control
     # =====================================================================
 
     async def get_camera_params(self) -> dict[str, Any]:
@@ -291,8 +322,7 @@ class PNZEOClient:
     async def camera_control(self, param: int, value: int) -> bool:
         cgi = build_cgi_url(CGI_CAMERA_CONTROL, self.username, self.password,
                             param=param, value=value)
-        resp = await self._send_cgi(cgi)
-        return bool(resp and resp.get("success"))
+        return bool((r := await self._send_cgi(cgi)) and r.get("success"))
 
     async def set_brightness(self, v: int) -> bool:
         return await self.camera_control(CGI_PARAM_BRIGHTNESS, v)
@@ -361,9 +391,7 @@ class PNZEOClient:
         while self._connected:
             try:
                 if self._transport and self._cam_port:
-                    self._transport.sendto(
-                        build_alive(), (self.host, self._cam_port),
-                    )
+                    self._transport.sendto(build_alive(), (self.host, self._cam_port))
                 await asyncio.sleep(KEEPALIVE_INTERVAL)
             except asyncio.CancelledError:
                 break
@@ -376,7 +404,7 @@ class PNZEOClient:
 
 
 class _PNZEOProtocol(asyncio.DatagramProtocol):
-    """UDP protocol — single socket handles discovery + punch + data."""
+    """UDP protocol handler."""
 
     def __init__(self, client: PNZEOClient) -> None:
         self.client = client
@@ -387,27 +415,14 @@ class _PNZEOProtocol(asyncio.DatagramProtocol):
             return
 
         pkt_type = data[1]
-        # Log ALL packets for debugging
-        if pkt_type not in (PktType.ALIVE, PktType.ALIVE_ACK):
-            _LOGGER.warning(
-                "PPPP RX: F1%02X from %s:%d (%dB)",
-                pkt_type, addr[0], addr[1], len(data),
-            )
 
-        # F141 PUNCH_PKT — camera's response to LAN search OR punch
-        # Always valid: save port + mark P2P ready + signal waiter
-        if pkt_type == PktType.PUNCH_PKT and addr[0] == self.client.host:
-            self.client._cam_port = addr[1]
-            self.got_p2p_rdy = True
-            self.client._drw_response.set()
-
-        # F142/F143 P2P_RDY — also valid handshake
-        elif pkt_type in (PktType.P2P_RDY, PktType.P2P_RDY_ACK):
-            if not self.got_p2p_rdy:
+        # F141/F142/F143 — all valid P2P handshake responses
+        if pkt_type in (PktType.PUNCH_PKT, PktType.P2P_RDY, PktType.P2P_RDY_ACK):
+            if addr[0] == self.client.host:
                 self.got_p2p_rdy = True
                 self.client._drw_response.set()
 
-        # DRW data response from camera
+        # DRW data from camera
         elif pkt_type == PktType.DRW:
             self.client._handle_drw_response(data)
 
