@@ -8,6 +8,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from .const import ConnectionState
 from .device import PNZEODevice
 
 _LOGGER = logging.getLogger(__name__)
@@ -17,8 +18,13 @@ SCAN_INTERVAL = timedelta(seconds=60)
 class PNZEOCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Coordinator to poll camera state every 60s.
 
+    Uses ConnectionState enum to gate reconnection decisions:
+    - CONNECTED: normal poll path (get_status + get_camera_params)
+    - CONNECTING/RECONNECTING/AUTHENTICATING: watchdog is handling it, don't interfere
+    - DISCONNECTED/FAILED: trigger reconnection via async_setup
+
     PPPP is used for control commands (switches, buttons, PTZ etc).
-    If PPPP connection fails, video still works via RTSP — we just
+    If PPPP connection fails, video still works via RTSP -- we just
     return empty state and log a warning instead of raising UpdateFailed.
     """
 
@@ -35,13 +41,43 @@ class PNZEOCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch camera state via PPPP.
 
-        If PPPP is not connected, try to reconnect silently.
-        Never raise UpdateFailed for PPPP issues — RTSP video must keep working.
+        Uses ConnectionState enum to gate reconnection:
+        - CONNECTED: normal poll path
+        - CONNECTING/RECONNECTING/AUTHENTICATING: watchdog is handling it, don't interfere
+        - DISCONNECTED/FAILED: trigger reconnection
+        Never raise UpdateFailed for PPPP issues -- RTSP video must keep working.
         """
-        if not self.device.client.connected:
+        client = self.device.client
+        state = client.connection_state
+
+        if state == ConnectionState.CONNECTED:
+            # Normal path: poll camera state
             try:
-                # Clean up any stale connection before reconnecting
-                await self.device.client.disconnect()
+                await client.get_status()
+                await client.get_camera_params()
+                self._pppp_available = True
+                return self._build_data(client)
+            except Exception as ex:
+                _LOGGER.debug("PPPP update failed: %s", ex)
+                self._pppp_available = False
+                return self._build_data(client)
+
+        if state in (
+            ConnectionState.CONNECTING,
+            ConnectionState.RECONNECTING,
+            ConnectionState.AUTHENTICATING,
+        ):
+            # Reconnection in progress -- don't interfere, return last known state
+            _LOGGER.debug(
+                "PPPP %s for %s -- watchdog handling reconnection",
+                state.name, self.device.host,
+            )
+            return self._build_data(client)
+
+        if state in (ConnectionState.DISCONNECTED, ConnectionState.FAILED):
+            # Trigger reconnection
+            try:
+                await client.disconnect()
                 result = await self.device.async_setup()
                 self._pppp_available = result
                 if not result:
@@ -50,19 +86,18 @@ class PNZEOCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         "Control commands disabled, video still works via RTSP.",
                         self.device.host,
                     )
-                    return self.device.client.state
+                return self._build_data(client)
             except Exception as ex:
                 _LOGGER.debug("PPPP setup failed: %s", ex)
                 self._pppp_available = False
-                return {}
+                return self._build_data(client)
 
-        try:
-            await self.device.client.get_status()
-            await self.device.client.get_camera_params()
-            self._pppp_available = True
-            return self.device.client.state
-        except Exception as ex:
-            _LOGGER.debug("PPPP update failed: %s. Will retry next cycle.", ex)
-            self._pppp_available = False
-            # Don't raise UpdateFailed — let RTSP video keep working
-            return self.device.client.state
+        # Fallback for any unexpected state
+        return self._build_data(client)
+
+    def _build_data(self, client) -> dict[str, Any]:
+        """Build coordinator data dict with connection state included."""
+        data = dict(client.state) if client.state else {}
+        data["connection_state"] = client.connection_state.name
+        data["connection_method"] = client.connection_method
+        return data
