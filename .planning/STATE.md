@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-04-02T16:08:31.723Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-04-02T16:18:28.840Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
   percent: 0
 ---
 
@@ -59,6 +59,7 @@ Progress: [..........] 0%
 | Phase 02 P02 | 3min | 2 tasks | 8 files |
 | Phase 02 P03 | 3min | 2 tasks | 6 files |
 | Phase 02 P04 | 3min | 2 tasks | 5 files |
+| Phase 03 P02 | 1min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,7 @@ Recent decisions affecting current work:
 - [Phase 02]: get_users omits passwords from response for security
 - [Phase 02]: FTP/email settings are service-call-only (NOT polled) to protect Pi5 60s coordinator budget
 - [Phase 02]: set_push_token logs warning on failure since MSG_SET_FCM_PUSH=97 may require binary protocol
+- [Phase 03]: diagnostics.py is auto-discovered by HA -- no PLATFORMS registration needed
 
 ### Pending Todos
 
@@ -100,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T16:01:52.665Z
-Stopped at: Completed 02-04-PLAN.md
+Last session: 2026-04-02T16:18:28.837Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None

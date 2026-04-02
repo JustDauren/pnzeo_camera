@@ -69,7 +69,7 @@ Plans:
 
 Plans:
 - [ ] 03-01-PLAN.md -- Binary sensors (connection + motion), sensors (SD card + device info), alarm event entity
-- [ ] 03-02-PLAN.md -- Integration diagnostics (connection stats + capability dump)
+- [x] 03-02-PLAN.md -- Integration diagnostics (connection stats + capability dump)
 
 ### Phase 4: SD Card Features
 **Goal**: Users can manage SD card recordings and browse/download files from HA

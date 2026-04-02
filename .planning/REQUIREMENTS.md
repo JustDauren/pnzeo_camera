@@ -95,8 +95,8 @@
 
 ### Diagnostics
 
-- [ ] **DIAG-01**: Integration diagnostics (connection stats, protocol state, last errors)
-- [ ] **DIAG-02**: Camera capability dump in diagnostics
+- [x] **DIAG-01**: Integration diagnostics (connection stats, protocol state, last errors)
+- [x] **DIAG-02**: Camera capability dump in diagnostics
 
 ## v2 Requirements
 
@@ -176,8 +176,8 @@
 | SYST-04 | Phase 2 | Complete |
 | SNAP-01 | Phase 2 | Complete |
 | SNAP-02 | Phase 2 | Complete |
-| DIAG-01 | Phase 3 | Pending |
-| DIAG-02 | Phase 3 | Pending |
+| DIAG-01 | Phase 3 | Complete |
+| DIAG-02 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 54 total
