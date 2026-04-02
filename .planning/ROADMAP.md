@@ -95,7 +95,11 @@ Plans:
   2. User can send audio to the camera speaker via a service call (DRW channel 3)
   3. User can toggle the camera microphone on/off via a switch entity
   4. Audio works without any external Python dependencies (pure Python G.711 A-law codec)
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 05-01-PLAN.md -- G.711 A-law codec, DRW channel routing refactor, audio format constants
+- [ ] 05-02-PLAN.md -- Audio services (listen, talk, stop), microphone switch, service registration
 
 ### Phase 6: Config Flow & Polish
 **Goal**: New users can set up the integration in under 2 minutes with auto-discovery and validation
@@ -120,5 +124,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 2. CGI Command Expansion | 4/4 | Complete | - |
 | 3. Event & Sensor Entities | 0/2 | Planned | - |
 | 4. SD Card Features | 0/2 | Planned | - |
-| 5. Two-Way Audio | 0/0 | Not started | - |
+| 5. Two-Way Audio | 0/2 | Planned | - |
 | 6. Config Flow & Polish | 0/0 | Not started | - |
