@@ -98,7 +98,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md -- G.711 A-law codec, DRW channel routing refactor, audio format constants
+- [x] 05-01-PLAN.md -- G.711 A-law codec, DRW channel routing refactor, audio format constants
 - [ ] 05-02-PLAN.md -- Audio services (listen, talk, stop), microphone switch, service registration
 
 ### Phase 6: Config Flow & Polish

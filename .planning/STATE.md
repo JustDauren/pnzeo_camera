@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-04-02T16:41:36.989Z"
+status: executing
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-04-02T16:58:19.963Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 13
+  completed_plans: 12
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** Full camera control from HA -- install via HACS, enter password, everything works autonomously on Pi5
-**Current focus:** Phase 04 — sd-card-features
+**Current focus:** Phase 05 — two-way-audio
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 05 (two-way-audio) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-02
 
 Progress: [..........] 0%
@@ -63,6 +63,7 @@ Progress: [..........] 0%
 | Phase 03 P01 | 2min | 2 tasks | 4 files |
 | Phase 04 P01 | 4min | 2 tasks | 8 files |
 | Phase 04 P02 | 3min | 2 tasks | 2 files |
+| Phase 05 P01 | 5min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,9 @@ Recent decisions affecting current work:
 - [Phase 04]: Unmount SD button disabled by default (destructive action, matches format_sd pattern)
 - [Phase 04]: Browse-only MediaSource: async_resolve_media raises Unresolvable because PPPP has no HTTP; DRW file streaming deferred
 - [Phase 04]: MediaSource is NOT a Platform -- registered via manifest dependency + async_get_media_source factory, no PLATFORMS list change
+- [Phase 05]: Encode table built by inverting decode table via binary search -- guarantees roundtrip consistency
+- [Phase 05]: Audio queue maxsize=50 with drop-oldest backpressure -- prevents memory growth during streaming
+- [Phase 05]: DRW channel routing: data[2] byte determines handler (CH_CMD->CGI, CH_AUDIO->queue)
 
 ### Pending Todos
 
@@ -113,6 +117,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T16:40:46.342Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-04-02T16:58:19.960Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None
