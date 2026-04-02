@@ -139,31 +139,32 @@ class PNZEOClient:
             )
             target = (self.host, self._cam_port)
 
-            # Step 2: F141 PUNCH → P2P handshake (same socket!)
-            uid = encode_uid(self.device_id)
-            punch = struct.pack(">BBH", 0xF1, PktType.PUNCH_PKT, len(uid)) + uid
-
-            self._drw_response.clear()
-            self._protocol.got_p2p_rdy = False
-
-            # Send punches interleaved with keepalive
-            for i in range(PUNCH_COUNT):
-                self._transport.sendto(punch, target)
-                if i % 3 == 2:
-                    self._transport.sendto(build_alive(), target)
-                await asyncio.sleep(PUNCH_INTERVAL)
-                if self._protocol.got_p2p_rdy:
-                    _LOGGER.warning("PPPP DEBUG: P2P handshake OK after %d punches!", i + 1)
-                    break
-
-            # Wait more if not yet ready
+            # Step 2: P2P handshake
+            # F141 from discovery already counts as handshake.
+            # If not ready yet, send explicit punches.
             if not self._protocol.got_p2p_rdy:
-                try:
-                    await asyncio.wait_for(
-                        self._drw_response.wait(), timeout=PUNCH_WAIT,
-                    )
-                except asyncio.TimeoutError:
-                    pass
+                uid = encode_uid(self.device_id)
+                punch = struct.pack(">BBH", 0xF1, PktType.PUNCH_PKT, len(uid)) + uid
+
+                self._drw_response.clear()
+                for i in range(PUNCH_COUNT):
+                    self._transport.sendto(punch, target)
+                    if i % 3 == 2:
+                        self._transport.sendto(build_alive(), target)
+                    await asyncio.sleep(PUNCH_INTERVAL)
+                    if self._protocol.got_p2p_rdy:
+                        break
+
+                if not self._protocol.got_p2p_rdy:
+                    try:
+                        await asyncio.wait_for(
+                            self._drw_response.wait(), timeout=PUNCH_WAIT,
+                        )
+                    except asyncio.TimeoutError:
+                        pass
+
+            if self._protocol.got_p2p_rdy:
+                _LOGGER.warning("PPPP: P2P handshake OK with %s:%d", self.host, self._cam_port)
 
             if not self._protocol.got_p2p_rdy:
                 _LOGGER.warning(
@@ -389,13 +390,10 @@ class _PNZEOProtocol(asyncio.DatagramProtocol):
             )
 
         # F141 PUNCH_PKT — camera's response to LAN search OR punch
+        # Always valid: save port + mark P2P ready + signal waiter
         if pkt_type == PktType.PUNCH_PKT and addr[0] == self.client.host:
-            # First F141 = LAN discovery → save port
-            if not self.client._cam_port:
-                self.client._cam_port = addr[1]
-            # F141 also counts as P2P handshake response
-            if not self.got_p2p_rdy:
-                self.got_p2p_rdy = True
+            self.client._cam_port = addr[1]
+            self.got_p2p_rdy = True
             self.client._drw_response.set()
 
         # F142/F143 P2P_RDY — also valid handshake
