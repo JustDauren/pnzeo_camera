@@ -35,7 +35,20 @@
       "already_configured": "This camera is already configured"
     },
     "error": {
-      "cannot_connect": "Cannot connect to camera. Check IP and port."
+      "cannot_connect": "Cannot connect to camera. Check IP and port.",
+      "invalid_auth": "Wrong password. Check credentials.",
+      "password_change_failed": "Failed to change password on camera."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Camera Settings",
+        "data": {
+          "change_password": "Change camera password",
+          "new_password": "New password"
+        }
+      }
     }
   },
   "services": {
@@ -80,6 +93,16 @@
         "msg_type": {
           "name": "Message type",
           "description": "PPPP message type ID"
+        }
+      }
+    },
+    "change_password": {
+      "name": "Change Camera Password",
+      "description": "Change the camera login password via PPPP",
+      "fields": {
+        "new_password": {
+          "name": "New password",
+          "description": "New password for the camera (will be saved in integration config)"
         }
       }
     }

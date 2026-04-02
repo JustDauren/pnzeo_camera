@@ -19,6 +19,7 @@ async def async_setup_entry(
         PNZEORebootButton(coordinator),
         PNZEOSnapshotButton(coordinator),
         PNZEOFormatSDButton(coordinator),
+        PNZEOFactoryResetButton(coordinator),
     ])
 
 
@@ -51,3 +52,14 @@ class PNZEOFormatSDButton(PNZEOEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         await self.coordinator.device.client.format_sd()
+
+
+class PNZEOFactoryResetButton(PNZEOEntity, ButtonEntity):
+    _attr_icon = "mdi:factory"
+    _attr_entity_registry_enabled_default = False  # hidden by default (destructive!)
+
+    def __init__(self, coordinator: PNZEOCoordinator) -> None:
+        super().__init__(coordinator, "factory_reset", "Factory Reset")
+
+    async def async_press(self) -> None:
+        await self.coordinator.device.client.factory_reset()

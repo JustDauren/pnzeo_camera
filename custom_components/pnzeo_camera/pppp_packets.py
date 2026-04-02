@@ -413,3 +413,38 @@ def encode_camera_control(cmd_type: int, value: int) -> bytes:
 def encode_ptz(direction: int, step_mode: int = 1) -> bytes:
     """Encode PTZ control command."""
     return struct.pack("<BB", direction, step_mode)
+
+
+def encode_user_setting(
+    user1: str, pwd1: str,
+    user2: str, pwd2: str,
+    user3: str, pwd3: str,
+) -> bytes:
+    """Encode user/password setting command (MSG_SET_USER = 10).
+
+    Camera supports 3 user slots, each with 32-byte username + 32-byte password.
+    Total payload: 192 bytes.
+    """
+    parts = []
+    for u, p in [(user1, pwd1), (user2, pwd2), (user3, pwd3)]:
+        parts.append(u.encode("ascii")[:32].ljust(32, b"\x00"))
+        parts.append(p.encode("ascii")[:32].ljust(32, b"\x00"))
+    return b"".join(parts)
+
+
+def parse_user_info(payload: bytes) -> list[dict]:
+    """Parse user info response (MSG_GET_USER_INFO = 66).
+
+    Returns list of up to 3 user dicts: [{"username": ..., "password": ...}, ...]
+    """
+    users = []
+    offset = 0
+    for _ in range(3):
+        if offset + 64 > len(payload):
+            break
+        username = payload[offset:offset + 32].split(b"\x00")[0].decode("ascii", errors="ignore")
+        password = payload[offset + 32:offset + 64].split(b"\x00")[0].decode("ascii", errors="ignore")
+        if username:
+            users.append({"username": username, "password": password})
+        offset += 64
+    return users

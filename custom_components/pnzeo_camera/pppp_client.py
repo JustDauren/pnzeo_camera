@@ -22,8 +22,9 @@ from .const import (
     CMD_SET_MIRROR, CMD_SET_RESOLUTION,
     MSG_CAMERA_CONTROL, MSG_FORMAT_SD, MSG_GET_ALARM_EX, MSG_GET_ALARM_PARAM,
     MSG_GET_CAMERA_PARAMS, MSG_GET_CAPABILITY, MSG_GET_REC_MODE,
-    MSG_GET_STATUS, MSG_GET_VOICE, MSG_REBOOT, MSG_FACTORY_RESET,
-    MSG_SET_ALARM_EX, MSG_SET_REC_MODE, MSG_SNAPSHOT,
+    MSG_GET_STATUS, MSG_GET_USER_INFO, MSG_GET_VOICE,
+    MSG_REBOOT, MSG_FACTORY_RESET,
+    MSG_SET_ALARM_EX, MSG_SET_REC_MODE, MSG_SET_USER, MSG_SNAPSHOT,
     PPPP_PORT_DH_LAN, PPPP_PORT_STANDARD,
 )
 from .pppp_packets import (
@@ -31,6 +32,7 @@ from .pppp_packets import (
     build_dh_discovery, build_hello, build_lan_search,
     build_p2p_connect,
     encode_camera_control, encode_command, encode_login, encode_ptz,
+    encode_user_setting, parse_user_info,
     decode_response, parse_drw_packet, parse_f1xx_message,
 )
 
@@ -263,6 +265,109 @@ class PNZEOClient:
         except Exception as ex:
             _LOGGER.debug("Authentication error: %s", ex)
             return False
+
+    async def login(self, username: str, password: str) -> bool:
+        """Verify credentials via PPPP login. Returns True if password accepted."""
+        if not self._connected or not self._transport:
+            return False
+        try:
+            login_data = encode_login(username, password)
+            cmd = encode_command(MSG_GET_CAPABILITY, login_data)
+
+            # Clear pending response
+            self._state.pop("last_response", None)
+            self._state.pop(f"msg_{MSG_GET_CAPABILITY}", None)
+
+            self._send_cmd(cmd)
+
+            # Wait for response (camera responds fast on LAN)
+            for _ in range(10):
+                await asyncio.sleep(0.3)
+                if "last_response" in self._state:
+                    resp_type = self._state["last_response"]
+                    # MSG_GET_CAPABILITY (74) response = success
+                    # Negative response or no response = fail
+                    if resp_type == MSG_GET_CAPABILITY:
+                        return True
+                    elif resp_type == -1:
+                        return False
+
+            # Timeout — no response means probably wrong password
+            _LOGGER.debug("Login timeout — no response from camera")
+            return False
+        except Exception as ex:
+            _LOGGER.debug("Login error: %s", ex)
+            return False
+
+    async def get_user_info(self) -> list[dict]:
+        """Get user accounts from camera (up to 3 slots).
+
+        Returns list of dicts: [{"username": "admin", "password": "..."}, ...]
+        """
+        if not self._connected:
+            return []
+        try:
+            self._state.pop(f"msg_{MSG_GET_USER_INFO}", None)
+            await self.send_command(MSG_GET_USER_INFO)
+
+            for _ in range(10):
+                await asyncio.sleep(0.3)
+                raw = self._state.get(f"msg_{MSG_GET_USER_INFO}")
+                if raw:
+                    return parse_user_info(raw)
+            return []
+        except Exception as ex:
+            _LOGGER.debug("Get user info error: %s", ex)
+            return []
+
+    async def change_password(self, new_password: str, username: str = "admin") -> bool:
+        """Change camera password.
+
+        1. Fetches current 3 user slots via get_user_info()
+        2. Updates the matching username's password
+        3. Sends SET_USER command with all 3 slots
+        """
+        users = await self.get_user_info()
+
+        if not users:
+            # No user info returned — try blind update with defaults
+            _LOGGER.warning("Cannot get user info, trying blind password change")
+            users = [
+                {"username": "admin", "password": self.password},
+                {"username": "", "password": ""},
+                {"username": "", "password": ""},
+            ]
+
+        # Pad to 3 slots
+        while len(users) < 3:
+            users.append({"username": "", "password": ""})
+
+        # Update password for the target username
+        found = False
+        for user in users:
+            if user["username"] == username:
+                user["password"] = new_password
+                found = True
+                break
+
+        if not found:
+            _LOGGER.error("Username '%s' not found in camera user list", username)
+            return False
+
+        # Build and send SET_USER command
+        params = encode_user_setting(
+            users[0]["username"], users[0]["password"],
+            users[1]["username"], users[1]["password"],
+            users[2]["username"], users[2]["password"],
+        )
+        result = await self.send_command(MSG_SET_USER, params)
+
+        if result:
+            # Update local password
+            self.password = new_password
+            _LOGGER.info("Password changed for user '%s'", username)
+
+        return result
 
     async def _cleanup_transport(self) -> None:
         """Clean up current transport without full disconnect."""
