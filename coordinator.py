@@ -40,14 +40,15 @@ class PNZEOCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """
         if not self.device.client.connected:
             try:
+                # Clean up any stale connection before reconnecting
+                await self.device.client.disconnect()
                 result = await self.device.async_setup()
                 self._pppp_available = result
                 if not result:
                     _LOGGER.debug(
-                        "PPPP not available for %s (method: %s). "
+                        "PPPP not available for %s. "
                         "Control commands disabled, video still works via RTSP.",
                         self.device.host,
-                        self.device.client.connection_method,
                     )
                     return self.device.client.state
             except Exception as ex:

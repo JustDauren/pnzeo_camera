@@ -85,8 +85,24 @@ class PNZEOClient:
     # =====================================================================
 
     async def connect(self) -> bool:
-        """Connect to camera. Single UDP socket for everything."""
+        """Connect to camera. Single UDP socket for everything.
+
+        Retries once if first attempt fails (camera may need time
+        to release previous session after HA restart).
+        """
+        for attempt in range(2):
+            result = await self._do_connect()
+            if result:
+                return True
+            if attempt == 0:
+                _LOGGER.debug("First connect attempt failed, retrying in 3s...")
+                await asyncio.sleep(3)
+        return False
+
+    async def _do_connect(self) -> bool:
+        """Single connection attempt."""
         try:
+            await self._cleanup()
             loop = asyncio.get_running_loop()
             self._protocol = _PNZEOProtocol(self)
 
