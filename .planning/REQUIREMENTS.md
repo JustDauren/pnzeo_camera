@@ -53,10 +53,10 @@
 
 ### Camera Settings (Extended)
 
-- [ ] **CSET-01**: Extended IR/night vision settings (RTSetIrcutAttr -- 5 params: mode, sensitivity, timing)
-- [ ] **CSET-02**: IR mode select entity (auto/on/off/schedule)
-- [ ] **CSET-03**: Power frequency setting (50Hz/60Hz)
-- [ ] **CSET-04**: Device name setting (text entity)
+- [x] **CSET-01**: Extended IR/night vision settings (RTSetIrcutAttr -- 5 params: mode, sensitivity, timing)
+- [x] **CSET-02**: IR mode select entity (auto/on/off/schedule)
+- [x] **CSET-03**: Power frequency setting (50Hz/60Hz)
+- [x] **CSET-04**: Device name setting (text entity)
 
 ### WiFi Configuration
 
@@ -83,15 +83,15 @@
 
 ### Time & System
 
-- [ ] **SYST-01**: Time/timezone sync from HA (RTSynchMobileTime)
+- [x] **SYST-01**: Time/timezone sync from HA (RTSynchMobileTime)
 - [ ] **SYST-02**: Device info sensor (firmware version, model, capabilities)
-- [ ] **SYST-03**: Factory reset button (with confirmation)
-- [ ] **SYST-04**: Reboot button (verify existing implementation)
+- [x] **SYST-03**: Factory reset button (with confirmation)
+- [x] **SYST-04**: Reboot button (verify existing implementation)
 
 ### Snapshot & Recording
 
-- [ ] **SNAP-01**: Snapshot via PPPP (RTSnapJpeg -- not just RTSP)
-- [ ] **SNAP-02**: Manual recording trigger service
+- [x] **SNAP-01**: Snapshot via PPPP (RTSnapJpeg -- not just RTSP)
+- [x] **SNAP-02**: Manual recording trigger service
 
 ### Diagnostics
 
@@ -155,10 +155,10 @@
 | AUDI-03 | Phase 5 | Pending |
 | AUDI-04 | Phase 5 | Pending |
 | AUDI-05 | Phase 5 | Pending |
-| CSET-01 | Phase 2 | Pending |
-| CSET-02 | Phase 2 | Pending |
-| CSET-03 | Phase 2 | Pending |
-| CSET-04 | Phase 2 | Pending |
+| CSET-01 | Phase 2 | Complete |
+| CSET-02 | Phase 2 | Complete |
+| CSET-03 | Phase 2 | Complete |
+| CSET-04 | Phase 2 | Complete |
 | WIFI-01 | Phase 2 | Pending |
 | WIFI-02 | Phase 2 | Pending |
 | WIFI-03 | Phase 2 | Pending |
@@ -170,12 +170,12 @@
 | NOTF-01 | Phase 2 | Pending |
 | NOTF-02 | Phase 2 | Pending |
 | NOTF-03 | Phase 2 | Pending |
-| SYST-01 | Phase 2 | Pending |
+| SYST-01 | Phase 2 | Complete |
 | SYST-02 | Phase 3 | Pending |
-| SYST-03 | Phase 2 | Pending |
-| SYST-04 | Phase 2 | Pending |
-| SNAP-01 | Phase 2 | Pending |
-| SNAP-02 | Phase 2 | Pending |
+| SYST-03 | Phase 2 | Complete |
+| SYST-04 | Phase 2 | Complete |
+| SNAP-01 | Phase 2 | Complete |
+| SNAP-02 | Phase 2 | Complete |
 | DIAG-01 | Phase 3 | Pending |
 | DIAG-02 | Phase 3 | Pending |
 
