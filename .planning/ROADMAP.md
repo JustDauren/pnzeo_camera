@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01-PLAN.md -- ConnectionState enum, backoff constants, and test scaffold
 - [x] 01-02-PLAN.md -- pppp_client.py state machine, watchdog, reconnect, socket lifecycle
-- [ ] 01-03-PLAN.md -- Coordinator state-aware reconnection gating
+- [x] 01-03-PLAN.md -- Coordinator state-aware reconnection gating
 
 ### Phase 2: CGI Command Expansion
 **Goal**: Every camera setting available in the MTCam HD app is readable and writable from HA
