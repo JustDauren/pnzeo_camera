@@ -9,6 +9,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN, MIRROR_MAP, RESOLUTION_MAP
 from .coordinator import PNZEOCoordinator
 from .entity import PNZEOEntity
+from .pppp_packets import IR_MODE_MAP, POWER_FREQ_MAP
 
 
 async def async_setup_entry(
@@ -19,6 +20,8 @@ async def async_setup_entry(
         PNZEOResolution(coordinator),
         PNZEOMirror(coordinator),
         PNZEOAlarmAction(coordinator),
+        PNZEOIRMode(coordinator),
+        PNZEOPowerFrequency(coordinator),
     ])
 
 
@@ -103,3 +106,55 @@ class PNZEOAlarmAction(PNZEOEntity, SelectEntity):
             mail=int(mail), snapshot=int(snapshot), record=int(record)
         )
         await self.coordinator.async_request_refresh()
+
+
+class PNZEOIRMode(PNZEOEntity, SelectEntity):
+    """IR night vision mode select (auto/on/off)."""
+    _attr_icon = "mdi:weather-night"
+    _attr_options = list(IR_MODE_MAP.values())
+
+    def __init__(self, coordinator: PNZEOCoordinator) -> None:
+        super().__init__(coordinator, "ir_mode", "IR Night Vision Mode")
+
+    @property
+    def current_option(self) -> str:
+        raw = self.coordinator.data.get("ircut_mode")
+        if raw is not None:
+            try:
+                return IR_MODE_MAP.get(int(raw), "Auto")
+            except (ValueError, TypeError):
+                pass
+        return "Auto"
+
+    async def async_select_option(self, option: str) -> None:
+        rev = {v: k for k, v in IR_MODE_MAP.items()}
+        if option in rev:
+            await self.coordinator.device.client.set_ircut_params(
+                ircut_mode=rev[option]
+            )
+            await self.coordinator.async_request_refresh()
+
+
+class PNZEOPowerFrequency(PNZEOEntity, SelectEntity):
+    """Power frequency select (50Hz/60Hz anti-flicker)."""
+    _attr_icon = "mdi:sine-wave"
+    _attr_options = list(POWER_FREQ_MAP.values())
+
+    def __init__(self, coordinator: PNZEOCoordinator) -> None:
+        super().__init__(coordinator, "power_frequency", "Power Frequency")
+
+    @property
+    def current_option(self) -> str:
+        raw = self.coordinator.data.get("power_freq")
+        if raw is not None:
+            try:
+                return POWER_FREQ_MAP.get(int(raw), "50Hz")
+            except (ValueError, TypeError):
+                pass
+        return "50Hz"
+
+    async def async_select_option(self, option: str) -> None:
+        rev = {v: k for k, v in POWER_FREQ_MAP.items()}
+        if option in rev:
+            await self.coordinator.device.client.set_power_freq(rev[option])
+            await self.coordinator.async_request_refresh()

@@ -30,6 +30,7 @@ PLATFORMS = [
     Platform.BUTTON,
     Platform.NUMBER,
     Platform.SELECT,
+    Platform.TEXT,
 ]
 
 PTZ_DIRECTIONS = {
@@ -165,5 +166,27 @@ def _register_services(hass: HomeAssistant) -> None:
 
     hass.services.async_register(
         DOMAIN, "get_alarm_log", handle_get_alarm_log,
+        schema=vol.Schema({}),
+    )
+
+    async def handle_sync_time(call: ServiceCall) -> None:
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                await coordinator.device.client.sync_time()
+                break
+
+    hass.services.async_register(
+        DOMAIN, "sync_time", handle_sync_time,
+        schema=vol.Schema({}),
+    )
+
+    async def handle_start_recording(call: ServiceCall) -> None:
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                await coordinator.device.client.start_recording()
+                break
+
+    hass.services.async_register(
+        DOMAIN, "start_recording", handle_start_recording,
         schema=vol.Schema({}),
     )

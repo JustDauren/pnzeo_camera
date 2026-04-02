@@ -65,6 +65,10 @@ class PNZEOCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     await asyncio.wait_for(client.get_alarm_ex_params(), timeout=5.0)
                 except (asyncio.TimeoutError, Exception):
                     _LOGGER.debug("Alarm EX params polling failed or timed out")
+                try:
+                    await asyncio.wait_for(client.get_ircut_params(), timeout=5.0)
+                except (asyncio.TimeoutError, Exception):
+                    _LOGGER.debug("IR cut params polling failed or timed out")
                 self._pppp_available = True
                 return self._build_data(client)
             except Exception as ex:

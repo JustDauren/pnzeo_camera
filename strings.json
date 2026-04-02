@@ -109,6 +109,14 @@
     "get_alarm_log": {
       "name": "Get Alarm Log",
       "description": "Retrieve alarm log entries from camera"
+    },
+    "sync_time": {
+      "name": "Sync Time",
+      "description": "Synchronize camera time with Home Assistant system time"
+    },
+    "start_recording": {
+      "name": "Start Recording",
+      "description": "Trigger manual recording on camera SD card"
     }
   }
 }
