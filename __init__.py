@@ -60,9 +60,9 @@ async def _ensure_relay(hass: HomeAssistant) -> PPPPLocalRelay | None:
         _LOGGER.info("Local PPPP relay server started")
         return relay
 
-    _LOGGER.warning(
-        "Could not start local relay on port 32100 "
-        "(may need iptables setup for full local control)"
+    # Not a problem — cloud relay works automatically without local relay
+    _LOGGER.debug(
+        "Local relay not started on port 32100 (optional — cloud relay is default)"
     )
     hass.data[_RELAY_KEY] = None
     return None

@@ -1,9 +1,9 @@
-"""Async PPPP client for PNZEO cameras — control via local relay.
+"""Async PPPP client for PNZEO cameras.
 
-Connection strategy:
-1. Local relay on Pi5 (port 32100) — primary, no internet needed
-2. LAN direct (port 32108/8600) — fast path if camera supports it
-3. Cloud relay — emergency fallback if local relay not available
+Connection strategy (fully automatic, no user setup needed):
+1. Cloud relay — default, works out of the box via P2P servers
+2. Local relay — optional, for advanced users who block camera internet
+3. LAN direct — last resort fallback
 
 After connection, uses DRW packets for camera commands.
 Video always via RTSP (TCP 554), independent of PPPP.
@@ -103,23 +103,24 @@ class PNZEOClient:
     async def connect(self) -> bool:
         """Connect and authenticate with camera.
 
-        Priority: local_relay → LAN → cloud_relay
+        Priority:
+        1. Local relay (if configured — for users who block camera internet)
+        2. Cloud relay (automatic — just works, no setup needed)
+        3. LAN direct (last resort — most MTC cameras ignore DRW on LAN)
         """
-        # Method 1: Local relay (Pi5, no internet needed)
+        # Method 1: Local relay (optional advanced setup)
         if self._local_relay and self.device_id:
             if await self._try_local_relay():
                 return True
 
-        # Method 2: LAN direct (fast path — might not work with this firmware)
-        if await self._try_lan(PPPP_PORT_STANDARD, "pppp_lan"):
-            return True
-        if await self._try_lan(PPPP_PORT_DH_LAN, "dh_lan"):
-            return True
-
-        # Method 3: Cloud relay (needs internet on Pi5)
+        # Method 2: Cloud relay (default — fully automatic)
         if self.device_id:
             if await self._try_cloud_relay():
                 return True
+
+        # Method 3: LAN direct (unlikely but try)
+        if await self._try_lan(PPPP_PORT_STANDARD, "pppp_lan"):
+            return True
 
         _LOGGER.warning(
             "All PPPP connection methods failed for %s. "
