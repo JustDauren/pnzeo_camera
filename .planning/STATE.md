@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-04-02T16:18:28.840Z"
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-04-02T16:19:41.151Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 
 ## Current Position
 
-Phase: 3
+Phase: 4
 Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-04-02
@@ -60,6 +60,7 @@ Progress: [..........] 0%
 | Phase 02 P03 | 3min | 2 tasks | 6 files |
 | Phase 02 P04 | 3min | 2 tasks | 5 files |
 | Phase 03 P02 | 1min | 2 tasks | 1 files |
+| Phase 03 P01 | 2min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,9 @@ Recent decisions affecting current work:
 - [Phase 02]: FTP/email settings are service-call-only (NOT polled) to protect Pi5 60s coordinator budget
 - [Phase 02]: set_push_token logs warning on failure since MSG_SET_FCM_PUSH=97 may require binary protocol
 - [Phase 03]: diagnostics.py is auto-discovered by HA -- no PLATFORMS registration needed
+- [Phase 03]: Connection binary sensor overrides available=True to remain visible when camera disconnected
+- [Phase 03]: Event entity uses _handle_coordinator_update for motion_armed 0->1 transition detection
+- [Phase 03]: SD used sensor computed from total-free to avoid extra CGI query
 
 ### Pending Todos
 
@@ -102,6 +106,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T16:18:28.837Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-04-02T16:19:34.766Z
+Stopped at: Completed 03-01-PLAN.md
 Resume file: None

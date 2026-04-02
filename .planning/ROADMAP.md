@@ -68,7 +68,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md -- Binary sensors (connection + motion), sensors (SD card + device info), alarm event entity
+- [x] 03-01-PLAN.md -- Binary sensors (connection + motion), sensors (SD card + device info), alarm event entity
 - [x] 03-02-PLAN.md -- Integration diagnostics (connection stats + capability dump)
 
 ### Phase 4: SD Card Features
