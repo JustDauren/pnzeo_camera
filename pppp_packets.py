@@ -711,6 +711,9 @@ CGI_REBOOT = "reboot.cgi"
 CGI_FACTORY_RESET = "factory_reset.cgi"
 CGI_FORMAT_SD = "format_sd.cgi"
 CGI_SNAPSHOT = "snapshot.cgi"
+CGI_GET_ALARM_EX = "get_alarm_ex.cgi"
+CGI_SET_ALARM_EX = "set_alarm_ex.cgi"
+CGI_GET_ALARM_LOG = "get_alarm_log.cgi"
 
 # Camera control param IDs (for camera_control.cgi?param=X&value=Y)
 CGI_PARAM_RESOLUTION = 0

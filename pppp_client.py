@@ -33,6 +33,7 @@ from .pppp_packets import (
     CGI_CAMERA_CONTROL, CGI_REBOOT, CGI_FACTORY_RESET,
     CGI_FORMAT_SD, CGI_SNAPSHOT,
     CGI_SET_USER, CGI_SET_ALARM,
+    CGI_GET_ALARM, CGI_GET_ALARM_EX, CGI_SET_ALARM_EX, CGI_GET_ALARM_LOG,
     CGI_PARAM_BRIGHTNESS, CGI_PARAM_CONTRAST, CGI_PARAM_IR_CUT,
     CGI_PARAM_STATUS_LED, CGI_PARAM_MIRROR, CGI_PARAM_RESOLUTION,
 )
@@ -49,6 +50,27 @@ CLOUD_TIMEOUT = 3
 CLOUD_P2P_SERVERS = [
     ("54.186.48.247", 32100),
     ("54.191.3.239", 32100),
+]
+
+# Canonical alarm parameter names (33 params -- RTAlarmSetting from APK)
+ALARM_PARAMS = [
+    "motion_armed", "motion_sensitivity", "input_armed", "ioin_level",
+    "iolinkage", "ioout_level", "alarmpresetsit", "mail", "snapshot",
+    "record", "upload_interval", "schedule_enable",
+    "schedule_sun_0", "schedule_sun_1", "schedule_sun_2",
+    "schedule_mon_0", "schedule_mon_1", "schedule_mon_2",
+    "schedule_tue_0", "schedule_tue_1", "schedule_tue_2",
+    "schedule_wed_0", "schedule_wed_1", "schedule_wed_2",
+    "schedule_thu_0", "schedule_thu_1", "schedule_thu_2",
+    "schedule_fri_0", "schedule_fri_1", "schedule_fri_2",
+    "schedule_sat_0", "schedule_sat_1", "schedule_sat_2",
+]
+
+# Extended alarm parameter names (11 params -- RTAlarmEXSetting from APK)
+ALARM_EX_PARAMS = [
+    "mdAlarmType", "mdSensitive", "mdInterval", "mdEmailSnap",
+    "mdFtpSnap", "mdFtpRec", "ioEnable", "ioInterval",
+    "ioEmailSnap", "ioFtpSnap", "ioFtpRec",
 ]
 
 
@@ -485,6 +507,114 @@ class PNZEOClient:
         cgi = build_cgi_url(CGI_SET_ALARM, self.username, self.password,
                             motion_armed=1 if enabled else 0)
         return bool((r := await self._send_cgi(cgi)) and r.get("success"))
+
+    # =====================================================================
+    # Alarm settings (GET-before-SET per Pitfall 11)
+    # =====================================================================
+
+    async def get_alarm_params(self) -> dict[str, Any]:
+        """Get alarm parameters (33 params -- RTAlarmSetting)."""
+        cgi = build_cgi_url(CGI_GET_ALARM, self.username, self.password)
+        resp = await self._send_cgi(cgi)
+        if resp and resp.get("success"):
+            alarm = {k: v for k, v in resp.items()
+                     if k in ALARM_PARAMS}
+            self._camera_params.update(alarm)
+        return self._camera_params
+
+    async def set_alarm_params(self, **kwargs) -> bool:
+        """Set alarm parameters with GET-before-SET merge.
+
+        CRITICAL: Always GET current values first, merge changed values,
+        then SET all 33 params. Never send partial updates.
+        """
+        # Validate param names
+        unknown = [k for k in kwargs if k not in ALARM_PARAMS]
+        if unknown:
+            _LOGGER.warning("Unknown alarm params ignored: %s", unknown)
+            kwargs = {k: v for k, v in kwargs.items() if k in ALARM_PARAMS}
+
+        if not kwargs:
+            return False
+
+        # GET current values first
+        await self.get_alarm_params()
+        current = {k: self._camera_params.get(k, "0") for k in ALARM_PARAMS}
+
+        # Merge changes into current
+        current.update({k: str(v) for k, v in kwargs.items()})
+
+        # SET all params
+        cgi = build_cgi_url(CGI_SET_ALARM, self.username, self.password, **current)
+        return bool((r := await self._send_cgi(cgi)) and r.get("success"))
+
+    async def get_alarm_ex_params(self) -> dict[str, Any]:
+        """Get extended alarm parameters (11 params -- RTAlarmEXSetting)."""
+        cgi = build_cgi_url(CGI_GET_ALARM_EX, self.username, self.password)
+        resp = await self._send_cgi(cgi)
+        if resp and resp.get("success"):
+            alarm_ex = {k: v for k, v in resp.items()
+                        if k in ALARM_EX_PARAMS}
+            self._camera_params.update(alarm_ex)
+        return self._camera_params
+
+    async def set_alarm_ex_params(self, **kwargs) -> bool:
+        """Set extended alarm parameters with GET-before-SET merge.
+
+        CRITICAL: Always GET current values first, merge changed values,
+        then SET all 11 params. Never send partial updates.
+        """
+        unknown = [k for k in kwargs if k not in ALARM_EX_PARAMS]
+        if unknown:
+            _LOGGER.warning("Unknown alarm EX params ignored: %s", unknown)
+            kwargs = {k: v for k, v in kwargs.items() if k in ALARM_EX_PARAMS}
+
+        if not kwargs:
+            return False
+
+        # GET current values first
+        await self.get_alarm_ex_params()
+        current = {k: self._camera_params.get(k, "0") for k in ALARM_EX_PARAMS}
+
+        # Merge changes into current
+        current.update({k: str(v) for k, v in kwargs.items()})
+
+        # SET all params
+        cgi = build_cgi_url(CGI_SET_ALARM_EX, self.username, self.password, **current)
+        return bool((r := await self._send_cgi(cgi)) and r.get("success"))
+
+    async def get_alarm_log(self) -> list[dict]:
+        """Get alarm log entries from camera."""
+        cgi = build_cgi_url(CGI_GET_ALARM_LOG, self.username, self.password)
+        resp = await self._send_cgi(cgi)
+        if not resp or not resp.get("success"):
+            return []
+
+        # Parse log entries from response text
+        entries = []
+        raw = resp.get("raw", "")
+        for line in raw.split("\n"):
+            line = line.strip().rstrip(";")
+            if line.startswith("log_") and "=" in line:
+                key, _, val = line.partition("=")
+                # Each log entry is log_N=type,timestamp,...
+                parts = val.split(",")
+                if len(parts) >= 2:
+                    entries.append({
+                        "key": key.strip(),
+                        "type": parts[0].strip(),
+                        "time": parts[1].strip() if len(parts) > 1 else "",
+                        "extra": ",".join(parts[2:]) if len(parts) > 2 else "",
+                    })
+        return entries
+
+    async def set_sound_detection(self, enabled: bool) -> bool:
+        """Toggle sound detection alarm (uses input_armed field)."""
+        return await self.set_alarm_params(input_armed=1 if enabled else 0)
+
+    async def set_gpio_alarm(self, enabled: bool) -> bool:
+        """Toggle GPIO alarm input (uses ioEnable in extended alarm)."""
+        return await self.set_alarm_ex_params(ioEnable=1 if enabled else 0)
 
     async def set_recording_mode(self, mode: int) -> bool:
         cgi = build_cgi_url("set_record_param.cgi", self.username, self.password,
