@@ -110,8 +110,11 @@ Plans:
   2. User can manually enter a UID as fallback when auto-discovery does not find the camera
   3. Config flow validates the password during setup and shows a clear error if wrong
   4. Detected capabilities determine which entities are created (no dead entities for unsupported features)
-**Plans**: TBD
+**Plans:** 1 plan
 **UI hint**: yes
+
+Plans:
+- [ ] 06-01-PLAN.md -- Enhanced config flow: discovery, manual UID, password validation, capability storage
 
 ## Progress
 
@@ -125,4 +128,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 3. Event & Sensor Entities | 0/2 | Planned | - |
 | 4. SD Card Features | 0/2 | Planned | - |
 | 5. Two-Way Audio | 2/2 | Complete   | 2026-04-02 |
-| 6. Config Flow & Polish | 0/0 | Not started | - |
+| 6. Config Flow & Polish | 0/1 | Planned | - |
