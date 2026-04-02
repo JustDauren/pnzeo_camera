@@ -25,11 +25,14 @@ from .device import PNZEODevice
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [
+    Platform.BINARY_SENSOR,
     Platform.CAMERA,
-    Platform.SWITCH,
     Platform.BUTTON,
+    Platform.EVENT,
     Platform.NUMBER,
     Platform.SELECT,
+    Platform.SENSOR,
+    Platform.SWITCH,
     Platform.TEXT,
 ]
 
