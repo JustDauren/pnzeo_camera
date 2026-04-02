@@ -1,7 +1,7 @@
 """PNZEO Camera integration for Home Assistant.
 
-Provides full local control of PNZEO cameras via PPPP protocol.
-Includes a built-in local relay server that replaces cloud infrastructure.
+Full local control of PNZEO/MTC cameras via PPPP protocol.
+Cloud is used ONLY for port discovery (one UDP query), all data stays on LAN.
 """
 from __future__ import annotations
 
@@ -22,7 +22,6 @@ from .const import (
 )
 from .coordinator import PNZEOCoordinator
 from .device import PNZEODevice
-from .pppp_relay import PPPPLocalRelay
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,44 +41,14 @@ PTZ_DIRECTIONS = {
     "patrol_ud": PTZ_PATROL_UD, "patrol_ud_stop": PTZ_PATROL_UD_STOP,
 }
 
-# Shared relay instance (one per HA instance, shared across config entries)
-_RELAY_KEY = f"{DOMAIN}_relay"
-
-
-async def _ensure_relay(hass: HomeAssistant) -> PPPPLocalRelay | None:
-    """Start the local relay server if not already running."""
-    if _RELAY_KEY in hass.data:
-        relay = hass.data[_RELAY_KEY]
-        if relay and relay.transport:
-            return relay
-
-    relay = PPPPLocalRelay()
-    started = await relay.start()
-    if started:
-        hass.data[_RELAY_KEY] = relay
-        _LOGGER.info("Local PPPP relay server started")
-        return relay
-
-    # Not a problem — cloud relay works automatically without local relay
-    _LOGGER.debug(
-        "Local relay not started on port 32100 (optional — cloud relay is default)"
-    )
-    hass.data[_RELAY_KEY] = None
-    return None
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up PNZEO Camera from config entry."""
-    # Start local relay (shared across all camera entries)
-    relay = await _ensure_relay(hass)
-
     device = PNZEODevice(
         host=entry.data[CONF_HOST],
         username=entry.data[CONF_USERNAME],
         password=entry.data[CONF_PASSWORD],
         device_id=entry.data.get(CONF_DEVICE_ID, ""),
         rtsp_port=entry.data.get(CONF_RTSP_PORT, DEFAULT_RTSP_PORT),
-        local_relay=relay,
     )
 
     coordinator = PNZEOCoordinator(hass, device)
@@ -100,13 +69,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         coordinator: PNZEOCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
         await coordinator.device.async_teardown()
-
-    # Stop relay if no more entries
-    if not hass.data.get(DOMAIN):
-        relay = hass.data.pop(_RELAY_KEY, None)
-        if relay:
-            await relay.stop()
-            _LOGGER.info("Local PPPP relay server stopped")
 
     return unload_ok
 

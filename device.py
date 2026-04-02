@@ -15,18 +15,13 @@ class PNZEODevice:
         password: str,
         device_id: str = "",
         rtsp_port: int = DEFAULT_RTSP_PORT,
-        local_relay: object | None = None,
     ) -> None:
         self.host = host
         self.username = username
         self.password = password
         self.device_id = device_id
         self.rtsp_port = rtsp_port
-        self.client = PNZEOClient(
-            host, username, password,
-            device_id=device_id,
-            local_relay=local_relay,
-        )
+        self.client = PNZEOClient(host, username, password, device_id=device_id)
 
     @property
     def rtsp_url(self) -> str:

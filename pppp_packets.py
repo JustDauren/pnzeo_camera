@@ -612,3 +612,110 @@ def parse_user_info(payload: bytes) -> list[dict]:
             users.append({"username": username, "password": password})
         offset += 64
     return users
+
+
+# =============================================================================
+# CGI Command Layer (libRtMain.so cameras use HTTP-like CGI inside DRW)
+# =============================================================================
+
+def build_drw_cgi(seq: int, cgi_text: str) -> bytes:
+    """Build DRW packet with CGI command for libRtMain.so cameras.
+
+    These cameras use HTTP-like CGI commands inside DRW packets:
+      GET /check_user.cgi?loginuse=X&loginpas=Y&user=X&pwd=Y&
+      GET /camera_control.cgi?param=14&value=1&loginuse=X&loginpas=Y&...
+      GET /get_camera_params.cgi?loginuse=X&loginpas=Y&...
+
+    DRW format: F1 D0 SIZE(2 BE) + inner_header(12) + cgi_ascii
+    Inner header: D1 00 00 SEQ 01 0A 00 00 CGI_LEN(4 LE)
+    """
+    cgi = cgi_text.encode("ascii")
+    inner = struct.pack("<BBBBBBBB", 0xD1, 0x00, 0x00, seq & 0xFF, 0x01, 0x0A, 0x00, 0x00)
+    inner += struct.pack("<I", len(cgi))
+    payload = inner + cgi
+    return struct.pack(">BBH", 0xF1, PktType.DRW, len(payload)) + payload
+
+
+def build_cgi_url(endpoint: str, username: str, password: str, **params) -> str:
+    """Build a CGI URL string for camera commands.
+
+    All commands require loginuse/loginpas authentication.
+    Example: GET /camera_control.cgi?param=14&value=1&loginuse=admin&loginpas=XXX&
+    """
+    parts = [f"GET /{endpoint}?"]
+    for key, val in params.items():
+        parts.append(f"{key}={val}&")
+    parts.append(f"loginuse={username}&loginpas={password}&")
+    parts.append(f"user={username}&pwd={password}&")
+    return "".join(parts)
+
+
+def parse_drw_cgi_response(data: bytes) -> dict | None:
+    """Parse DRW response containing CGI result.
+
+    Camera responds with: F1 D0 SIZE(2BE) + inner_header(12) + result_text
+    Result text format: "result=0\\nresult=0;\\njsonvalue={...}"
+    """
+    if len(data) < 16 or data[0] != 0xF1 or data[1] != PktType.DRW:
+        return None
+
+    # Skip outer header (4 bytes) + inner header (12 bytes)
+    text_start = 16
+    try:
+        text = data[text_start:].decode("ascii", errors="ignore").strip()
+    except Exception:
+        return None
+
+    result = {"raw": text, "success": False}
+
+    # Parse "result=X"
+    for line in text.split("\n"):
+        line = line.strip().rstrip(";")
+        if line.startswith("result="):
+            try:
+                result["result"] = int(line.split("=")[1])
+                result["success"] = result["result"] == 0
+            except ValueError:
+                pass
+        elif line.startswith("jsonvalue="):
+            import json
+            try:
+                result["json"] = json.loads(line[len("jsonvalue="):])
+            except Exception:
+                pass
+        elif "=" in line:
+            key, _, val = line.partition("=")
+            result[key.strip()] = val.strip().rstrip(";")
+
+    return result
+
+
+# CGI endpoint constants
+CGI_CHECK_USER = "check_user.cgi"
+CGI_GET_PARAMS = "get_camera_params.cgi"
+CGI_GET_STATUS = "get_status.cgi"
+CGI_CAMERA_CONTROL = "camera_control.cgi"
+CGI_SET_DATETIME = "set_mobiletime.cgi"
+CGI_GET_RECORD = "get_record_param.cgi"
+CGI_SET_RECORD = "set_record_param.cgi"
+CGI_GET_ALARM = "get_alarm.cgi"
+CGI_SET_ALARM = "set_alarm.cgi"
+CGI_GET_WIFI = "get_wifi_params.cgi"
+CGI_SET_WIFI = "set_wifi.cgi"
+CGI_GET_NETWORK = "get_network_params.cgi"
+CGI_SET_NETWORK = "set_network.cgi"
+CGI_GET_USER = "get_user_params.cgi"
+CGI_SET_USER = "set_user.cgi"
+CGI_REBOOT = "reboot.cgi"
+CGI_FACTORY_RESET = "factory_reset.cgi"
+CGI_FORMAT_SD = "format_sd.cgi"
+CGI_SNAPSHOT = "snapshot.cgi"
+
+# Camera control param IDs (for camera_control.cgi?param=X&value=Y)
+CGI_PARAM_RESOLUTION = 0
+CGI_PARAM_BRIGHTNESS = 1
+CGI_PARAM_CONTRAST = 2
+CGI_PARAM_POWER_FREQ = 3
+CGI_PARAM_MIRROR = 5
+CGI_PARAM_IR_CUT = 14      # IR LED / night vision
+CGI_PARAM_STATUS_LED = 15  # Indicator LED
