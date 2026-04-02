@@ -722,6 +722,11 @@ CGI_START_RECORDING = "set_record_param.cgi"
 CGI_WIFI_SCAN = "wifi_scan.cgi"
 CGI_GET_DDNS = "get_ddns_params.cgi"
 CGI_SET_DDNS = "set_ddns.cgi"
+CGI_GET_FTP = "get_ftp_params.cgi"
+CGI_SET_FTP = "set_ftp.cgi"
+CGI_GET_MAIL = "get_mail_params.cgi"
+CGI_SET_MAIL = "set_mail.cgi"
+CGI_SET_FCM = "set_push.cgi"
 
 # IR night vision mode map
 IR_MODE_MAP = {

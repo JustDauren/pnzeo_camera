@@ -42,6 +42,7 @@ from .pppp_packets import (
     CGI_SET_DATETIME, CGI_START_RECORDING,
     CGI_WIFI_SCAN, CGI_GET_DDNS, CGI_SET_DDNS,
     CGI_GET_WIFI, CGI_SET_WIFI, CGI_GET_NETWORK, CGI_GET_USER,
+    CGI_GET_FTP, CGI_SET_FTP, CGI_GET_MAIL, CGI_SET_MAIL, CGI_SET_FCM,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -838,6 +839,86 @@ class PNZEOClient:
             if user1 == self.username and pwd1:
                 self.password = pwd1
             return True
+        return False
+
+    # =====================================================================
+    # FTP, email, and push notification settings
+    # =====================================================================
+
+    async def get_ftp_params(self) -> dict[str, Any]:
+        """Get FTP upload configuration from camera.
+
+        Response contains: ftp_svr, ftp_port, ftp_user, ftp_dir,
+        ftp_mode (0=PORT, 1=PASV), ftp_upload_interval.
+        """
+        cgi = build_cgi_url(CGI_GET_FTP, self.username, self.password)
+        resp = await self._send_cgi(cgi)
+        if resp and resp.get("success"):
+            ftp = {k: v for k, v in resp.items()
+                   if k.startswith("ftp_")}
+            self._camera_params.update(ftp)
+            return ftp
+        return {}
+
+    async def set_ftp(self, server: str, port: int = 21, user: str = "",
+                      password: str = "", directory: str = "/",
+                      mode: int = 1, upload_interval: int = 0) -> bool:
+        """Configure FTP upload settings on camera.
+
+        mode: 0=Active (PORT), 1=Passive (PASV, usually needed)
+        upload_interval: 0=every alarm, N=every N seconds
+        """
+        cgi = build_cgi_url(CGI_SET_FTP, self.username, self.password,
+                            ftp_svr=server, ftp_port=port, ftp_user=user,
+                            ftp_pwd=password, ftp_dir=directory,
+                            ftp_mode=mode, ftp_upload_interval=upload_interval)
+        return bool((r := await self._send_cgi(cgi)) and r.get("success"))
+
+    async def get_mail_params(self) -> dict[str, Any]:
+        """Get email notification configuration from camera.
+
+        Response contains: mail_svr, mail_port, mail_user, mail_sender,
+        mail_receiver1..4, mail_ssl (0/1).
+        """
+        cgi = build_cgi_url(CGI_GET_MAIL, self.username, self.password)
+        resp = await self._send_cgi(cgi)
+        if resp and resp.get("success"):
+            mail = {k: v for k, v in resp.items()
+                    if k.startswith("mail_")}
+            self._camera_params.update(mail)
+            return mail
+        return {}
+
+    async def set_mail(self, smtp_server: str, smtp_port: int = 587,
+                       user: str = "", password: str = "",
+                       sender: str = "", receiver: str = "",
+                       ssl: int = 1) -> bool:
+        """Configure email notification settings on camera.
+
+        ssl: 0=off, 1=TLS/STARTTLS
+        """
+        cgi = build_cgi_url(CGI_SET_MAIL, self.username, self.password,
+                            mail_svr=smtp_server, mail_port=smtp_port,
+                            mail_user=user, mail_pwd=password,
+                            mail_sender=sender, mail_receiver1=receiver,
+                            mail_ssl=ssl)
+        return bool((r := await self._send_cgi(cgi)) and r.get("success"))
+
+    async def set_push_token(self, token: str) -> bool:
+        """Register FCM push notification token on camera.
+
+        Camera uses this to send push alerts on alarm events.
+        If CGI endpoint is unsupported, logs warning and returns False.
+        """
+        cgi = build_cgi_url(CGI_SET_FCM, self.username, self.password,
+                            token=token)
+        resp = await self._send_cgi(cgi)
+        if resp and resp.get("success"):
+            return True
+        _LOGGER.warning(
+            "set_push_token failed -- camera may not support CGI push "
+            "(MSG_SET_FCM_PUSH=97 may require binary protocol)"
+        )
         return False
 
     async def ptz_control(self, direction: int, step: int = 1) -> bool:
