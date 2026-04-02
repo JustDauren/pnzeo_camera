@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-04-02T16:58:19.963Z"
+status: verifying
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-04-02T17:04:09.139Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 
 Phase: 05 (two-way-audio) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-02
 
 Progress: [..........] 0%
@@ -64,6 +64,7 @@ Progress: [..........] 0%
 | Phase 04 P01 | 4min | 2 tasks | 8 files |
 | Phase 04 P02 | 3min | 2 tasks | 2 files |
 | Phase 05 P01 | 5min | 2 tasks | 3 files |
+| Phase 05 P02 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,9 @@ Recent decisions affecting current work:
 - [Phase 05]: Encode table built by inverting decode table via binary search -- guarantees roundtrip consistency
 - [Phase 05]: Audio queue maxsize=50 with drop-oldest backpressure -- prevents memory growth during streaming
 - [Phase 05]: DRW channel routing: data[2] byte determines handler (CH_CMD->CGI, CH_AUDIO->queue)
+- [Phase 05]: Microphone switch uses coordinator-data-driven state (voice_enable param) matching PNZEOMotionSwitch pattern
+- [Phase 05]: Talk service accepts base64 PCM and encodes to A-law inline -- simple one-shot pipeline via HA service call
+- [Phase 05]: Audio events fired on HA bus (pnzeo_camera_audio_started/stopped) for automation triggers
 
 ### Pending Todos
 
@@ -117,6 +121,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T16:58:19.960Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-04-02T17:04:09.134Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None

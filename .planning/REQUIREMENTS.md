@@ -45,9 +45,9 @@
 
 ### Audio
 
-- [ ] **AUDI-01**: Listen to camera audio stream (DRW channel 2, G.711 A-law decode)
-- [ ] **AUDI-02**: Two-way talk (DRW channel 3, G.711 A-law encode + send)
-- [ ] **AUDI-03**: Microphone on/off switch (RTSetVoiceEnable)
+- [x] **AUDI-01**: Listen to camera audio stream (DRW channel 2, G.711 A-law decode)
+- [x] **AUDI-02**: Two-way talk (DRW channel 3, G.711 A-law encode + send)
+- [x] **AUDI-03**: Microphone on/off switch (RTSetVoiceEnable)
 - [x] **AUDI-04**: Pure Python G.711 A-law codec (no external deps)
 - [x] **AUDI-05**: Audio format auto-detection from DRW packet headers
 
@@ -150,9 +150,9 @@
 | SDCD-06 | Phase 4 | Complete |
 | SDCD-07 | Phase 4 | Complete |
 | SDCD-08 | Phase 4 | Complete |
-| AUDI-01 | Phase 5 | Pending |
-| AUDI-02 | Phase 5 | Pending |
-| AUDI-03 | Phase 5 | Pending |
+| AUDI-01 | Phase 5 | Complete |
+| AUDI-02 | Phase 5 | Complete |
+| AUDI-03 | Phase 5 | Complete |
 | AUDI-04 | Phase 5 | Complete |
 | AUDI-05 | Phase 5 | Complete |
 | CSET-01 | Phase 2 | Complete |
