@@ -47,7 +47,13 @@ Plans:
   3. User can view and change IR night vision mode, WiFi network, device name, and power frequency
   4. User can manage FTP upload settings, email notification settings, and camera user accounts
   5. User can trigger a PPPP snapshot and a reboot/factory-reset from HA
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 02-01-PLAN.md -- Alarm & motion detection (CGI methods + switch/number/select entities)
+- [ ] 02-02-PLAN.md -- Camera settings, IR mode, system commands, snapshot/recording
+- [ ] 02-03-PLAN.md -- WiFi, network, and user management services
+- [ ] 02-04-PLAN.md -- FTP, email, and push notification services
 
 ### Phase 3: Event & Sensor Entities
 **Goal**: Camera state is visible in HA as real-time sensors, binary sensors, and event entities
@@ -102,8 +108,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Connection Reliability | 0/3 | Planned | - |
-| 2. CGI Command Expansion | 0/0 | Not started | - |
+| 1. Connection Reliability | 3/3 | Complete | - |
+| 2. CGI Command Expansion | 0/4 | Planned | - |
 | 3. Event & Sensor Entities | 0/0 | Not started | - |
 | 4. SD Card Features | 0/0 | Not started | - |
 | 5. Two-Way Audio | 0/0 | Not started | - |
