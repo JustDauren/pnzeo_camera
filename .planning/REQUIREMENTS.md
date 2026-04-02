@@ -77,9 +77,9 @@
 
 ### Notifications & Alerts
 
-- [ ] **NOTF-01**: FTP upload settings (server, port, user, password, path)
-- [ ] **NOTF-02**: Email notification settings (SMTP server, recipients)
-- [ ] **NOTF-03**: Push notification registration (FCM token for MSG_SET_FCM_PUSH)
+- [x] **NOTF-01**: FTP upload settings (server, port, user, password, path)
+- [x] **NOTF-02**: Email notification settings (SMTP server, recipients)
+- [x] **NOTF-03**: Push notification registration (FCM token for MSG_SET_FCM_PUSH)
 
 ### Time & System
 
@@ -167,9 +167,9 @@
 | USER-01 | Phase 2 | Complete |
 | USER-02 | Phase 2 | Complete |
 | USER-03 | Phase 2 | Complete |
-| NOTF-01 | Phase 2 | Pending |
-| NOTF-02 | Phase 2 | Pending |
-| NOTF-03 | Phase 2 | Pending |
+| NOTF-01 | Phase 2 | Complete |
+| NOTF-02 | Phase 2 | Complete |
+| NOTF-03 | Phase 2 | Complete |
 | SYST-01 | Phase 2 | Complete |
 | SYST-02 | Phase 3 | Pending |
 | SYST-03 | Phase 2 | Complete |

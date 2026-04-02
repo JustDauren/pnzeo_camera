@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-04-02T15:55:38.307Z"
+status: verifying
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-04-02T16:01:52.668Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 
 Phase: 02 (cgi-command-expansion) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-02
 
 Progress: [..........] 0%
@@ -58,6 +58,7 @@ Progress: [..........] 0%
 | Phase 02 P01 | 4min | 2 tasks | 9 files |
 | Phase 02 P02 | 3min | 2 tasks | 8 files |
 | Phase 02 P03 | 3min | 2 tasks | 6 files |
+| Phase 02 P04 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,8 @@ Recent decisions affecting current work:
 - [Phase 02]: WiFi/network polled every 5th cycle to save Pi5 60s budget
 - [Phase 02]: Query services (wifi_scan, get_users) use HA event bus for result delivery
 - [Phase 02]: get_users omits passwords from response for security
+- [Phase 02]: FTP/email settings are service-call-only (NOT polled) to protect Pi5 60s coordinator budget
+- [Phase 02]: set_push_token logs warning on failure since MSG_SET_FCM_PUSH=97 may require binary protocol
 
 ### Pending Todos
 
@@ -97,6 +100,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T15:55:38.303Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-04-02T16:01:52.665Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None
