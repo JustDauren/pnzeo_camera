@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import select as _select
+import selectors
 import socket
 import struct
 from typing import Any
@@ -229,11 +229,17 @@ class PNZEOClient:
 
     @staticmethod
     def _blocking_recv(sock: socket.socket, timeout: float) -> bytes | None:
-        """Blocking receive with timeout."""
-        ready, _, _ = _select.select([sock], [], [], timeout)
-        if ready:
-            data, _ = sock.recvfrom(4096)
-            return data
+        """Blocking receive with timeout using selectors (avoids select.py conflict)."""
+        sel = selectors.DefaultSelector()
+        sel.register(sock, selectors.EVENT_READ)
+        try:
+            events = sel.select(timeout=timeout)
+            if events:
+                data, _ = sock.recvfrom(4096)
+                return data
+        finally:
+            sel.unregister(sock)
+            sel.close()
         return None
 
     # =====================================================================
