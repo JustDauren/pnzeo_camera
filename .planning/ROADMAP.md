@@ -80,7 +80,11 @@ Plans:
   2. User can set recording mode (continuous/motion/schedule/off) and configure the recording schedule
   3. User can browse SD card recordings by date in the HA Media Browser (MediaSource integration)
   4. User can download individual recording files from the camera through HA
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 04-01-PLAN.md -- SD card management (unmount button, recording mode select, recording schedule service, CGI methods)
+- [ ] 04-02-PLAN.md -- MediaSource provider for browsing/downloading SD card recordings
 
 ### Phase 5: Two-Way Audio
 **Goal**: Users can listen to camera audio and talk through the camera from HA
@@ -115,6 +119,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Connection Reliability | 3/3 | Complete | - |
 | 2. CGI Command Expansion | 4/4 | Complete | - |
 | 3. Event & Sensor Entities | 0/2 | Planned | - |
-| 4. SD Card Features | 0/0 | Not started | - |
+| 4. SD Card Features | 0/2 | Planned | - |
 | 5. Two-Way Audio | 0/0 | Not started | - |
 | 6. Config Flow & Polish | 0/0 | Not started | - |
