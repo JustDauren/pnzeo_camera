@@ -24,6 +24,7 @@ async def async_setup_entry(
         PNZEOLEDSwitch(coordinator),
         PNZEOSoundAlarmSwitch(coordinator),
         PNZEOGPIOAlarmSwitch(coordinator),
+        PNZEOMicrophoneSwitch(coordinator),
     ])
 
 
@@ -151,4 +152,25 @@ class PNZEOGPIOAlarmSwitch(PNZEOEntity, SwitchEntity):
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self.coordinator.device.client.set_gpio_alarm(False)
+        await self.coordinator.async_request_refresh()
+
+
+class PNZEOMicrophoneSwitch(PNZEOEntity, SwitchEntity):
+    """Camera microphone on/off switch."""
+    _attr_icon = "mdi:microphone"
+
+    def __init__(self, coordinator: PNZEOCoordinator) -> None:
+        super().__init__(coordinator, "microphone", "Microphone")
+
+    @property
+    def is_on(self) -> bool:
+        # voice_enable from camera params: "1" = on, "0" = off
+        return self.coordinator.data.get("voice_enable", "1") == "1"
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self.coordinator.device.client.set_voice_enable(True)
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self.coordinator.device.client.set_voice_enable(False)
         await self.coordinator.async_request_refresh()

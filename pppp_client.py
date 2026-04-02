@@ -1015,6 +1015,13 @@ class PNZEOClient:
         )
         return False
 
+    async def set_voice_enable(self, enable: bool) -> bool:
+        """Enable/disable camera microphone (RTSetVoiceEnable)."""
+        cgi = build_cgi_url("set_voice.cgi", self.username, self.password,
+                            voice_enable=1 if enable else 0)
+        resp = await self._send_cgi(cgi)
+        return bool(resp and resp.get("success"))
+
     async def ptz_control(self, direction: int, step: int = 1) -> bool:
         cgi = build_cgi_url("decoder_control.cgi", self.username, self.password,
                             command=direction, onestep=step)
