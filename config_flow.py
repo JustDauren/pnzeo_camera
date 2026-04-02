@@ -238,7 +238,7 @@ class PNZEOOptionsFlow(OptionsFlow):
                 _LOGGER.error("Cannot connect to camera for password change")
                 return False
 
-            result = await client.change_password(new_password, data[CONF_USERNAME])
+            result = await client.change_password(new_password)
             return result
         except Exception as ex:
             _LOGGER.error("Password change error: %s", ex)
