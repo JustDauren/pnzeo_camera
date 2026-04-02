@@ -43,6 +43,8 @@ from .pppp_packets import (
     CGI_WIFI_SCAN, CGI_GET_DDNS, CGI_SET_DDNS,
     CGI_GET_WIFI, CGI_SET_WIFI, CGI_GET_NETWORK, CGI_GET_USER,
     CGI_GET_FTP, CGI_SET_FTP, CGI_GET_MAIL, CGI_SET_MAIL, CGI_SET_FCM,
+    CGI_UNMOUNT_SD, CGI_SET_RECORD_SCH, CGI_GET_RECORD_FILE,
+    CGI_GET_RECORD_CALENDAR, CGI_GET_RECORD, RECORDING_MODE_MAP,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -78,6 +80,19 @@ ALARM_EX_PARAMS = [
     "mdAlarmType", "mdSensitive", "mdInterval", "mdEmailSnap",
     "mdFtpSnap", "mdFtpRec", "ioEnable", "ioInterval",
     "ioEmailSnap", "ioFtpSnap", "ioFtpRec",
+]
+
+# Recording schedule parameter names (25 params)
+RECORDING_SCHEDULE_PARAMS = [
+    "rec_sch_enable",
+    "rec_sch_sun_0", "rec_sch_sun_1", "rec_sch_sun_2",
+    "rec_sch_mon_0", "rec_sch_mon_1", "rec_sch_mon_2",
+    "rec_sch_tue_0", "rec_sch_tue_1", "rec_sch_tue_2",
+    "rec_sch_wed_0", "rec_sch_wed_1", "rec_sch_wed_2",
+    "rec_sch_thu_0", "rec_sch_thu_1", "rec_sch_thu_2",
+    "rec_sch_fri_0", "rec_sch_fri_1", "rec_sch_fri_2",
+    "rec_sch_sat_0", "rec_sch_sat_1", "rec_sch_sat_2",
+    "rec_sch_record_time", "rec_sch_mode", "rec_sch_prerecord",
 ]
 
 
@@ -627,6 +642,78 @@ class PNZEOClient:
         cgi = build_cgi_url("set_record_param.cgi", self.username, self.password,
                             rec_mode=mode)
         return bool((r := await self._send_cgi(cgi)) and r.get("success"))
+
+    async def unmount_sd(self) -> bool:
+        """Safely unmount the SD card."""
+        cgi = build_cgi_url(CGI_UNMOUNT_SD, self.username, self.password)
+        return bool((r := await self._send_cgi(cgi)) and r.get("success"))
+
+    async def get_record_mode(self) -> dict[str, Any]:
+        """Get current recording mode. Stores rec_mode in _camera_params."""
+        cgi = build_cgi_url(CGI_GET_RECORD, self.username, self.password)
+        resp = await self._send_cgi(cgi)
+        if resp and resp.get("success"):
+            if "rec_mode" in resp:
+                self._camera_params["rec_mode"] = resp["rec_mode"]
+            # Store any other recording params
+            rec = {k: v for k, v in resp.items()
+                   if k.startswith("rec_")}
+            self._camera_params.update(rec)
+        return self._camera_params
+
+    async def set_recording_schedule(self, **kwargs) -> bool:
+        """Configure recording schedule (25 params).
+
+        Accepts: rec_sch_enable, rec_sch_sun_0..2, rec_sch_mon_0..2, ...,
+        rec_sch_sat_0..2, rec_sch_record_time, rec_sch_mode, rec_sch_prerecord.
+        """
+        unknown = [k for k in kwargs if k not in RECORDING_SCHEDULE_PARAMS]
+        if unknown:
+            _LOGGER.warning("Unknown recording schedule params ignored: %s", unknown)
+            kwargs = {k: v for k, v in kwargs.items()
+                      if k in RECORDING_SCHEDULE_PARAMS}
+
+        if not kwargs:
+            return False
+
+        cgi = build_cgi_url(CGI_SET_RECORD_SCH, self.username, self.password,
+                            **kwargs)
+        return bool((r := await self._send_cgi(cgi)) and r.get("success"))
+
+    async def get_record_file_list(self, start_date: str, end_date: str,
+                                   rec_type: int = 0, start_idx: int = 0,
+                                   count: int = 20) -> dict | None:
+        """Get recorded file list from SD card.
+
+        Args:
+            start_date: Start date (YYYY-MM-DD)
+            end_date: End date (YYYY-MM-DD)
+            rec_type: Recording type (0=all)
+            start_idx: Pagination start index
+            count: Number of files to return
+        Returns: Parsed response dict with file list and pagination info.
+        """
+        cgi = build_cgi_url(CGI_GET_RECORD_FILE, self.username, self.password,
+                            startDate=start_date, endDate=end_date,
+                            type=rec_type, startIdx=start_idx, count=count)
+        resp = await self._send_cgi(cgi)
+        if resp and resp.get("success"):
+            return resp
+        return None
+
+    async def get_record_calendar(self, month: str) -> dict | None:
+        """Get recording calendar (bitmask of days with recordings).
+
+        Args:
+            month: Month string in YYYY-MM format.
+        Returns: Parsed response dict with day bitmask.
+        """
+        cgi = build_cgi_url(CGI_GET_RECORD_CALENDAR, self.username, self.password,
+                            month=month)
+        resp = await self._send_cgi(cgi)
+        if resp and resp.get("success"):
+            return resp
+        return None
 
     # =====================================================================
     # Camera settings (IR, power freq, device name, time sync, recording)

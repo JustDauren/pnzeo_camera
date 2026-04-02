@@ -727,6 +727,10 @@ CGI_SET_FTP = "set_ftp.cgi"
 CGI_GET_MAIL = "get_mail_params.cgi"
 CGI_SET_MAIL = "set_mail.cgi"
 CGI_SET_FCM = "set_push.cgi"
+CGI_UNMOUNT_SD = "unmount_sd.cgi"
+CGI_SET_RECORD_SCH = "set_record_sch.cgi"
+CGI_GET_RECORD_FILE = "get_record_file.cgi"
+CGI_GET_RECORD_CALENDAR = "get_record_calendar.cgi"
 
 # IR night vision mode map
 IR_MODE_MAP = {
@@ -739,6 +743,14 @@ IR_MODE_MAP = {
 POWER_FREQ_MAP = {
     0: "50Hz",
     1: "60Hz",
+}
+
+# Recording mode map
+RECORDING_MODE_MAP = {
+    0: "Off",
+    1: "Continuous",
+    2: "Motion",
+    3: "Schedule",
 }
 
 # Camera control param IDs (for camera_control.cgi?param=X&value=Y)
