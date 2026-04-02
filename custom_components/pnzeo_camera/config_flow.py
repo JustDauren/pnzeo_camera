@@ -106,31 +106,26 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
             device_id = user_input.get(CONF_DEVICE_ID, "")
             rtsp_port = user_input.get(CONF_RTSP_PORT, DEFAULT_RTSP_PORT)
 
-            # Step 1: RTSP reachable?
+            # Verify RTSP reachable (fast check, <3s)
             if not await check_rtsp(host, rtsp_port):
                 errors["base"] = "cannot_connect"
             else:
-                # Step 2: PPPP login — verify password
-                pppp_ok = await self._verify_pppp_login(host, password, device_id)
+                # Save immediately — PPPP validates on first connect
+                # (PPPP verification is slow, don't block setup)
+                unique_id = device_id or host.replace(".", "_")
+                await self.async_set_unique_id(unique_id)
+                self._abort_if_unique_id_configured()
 
-                if pppp_ok is False:
-                    errors["base"] = "invalid_auth"
-                else:
-                    # pppp_ok True (valid) or None (can't check, allow anyway)
-                    unique_id = device_id or host.replace(".", "_")
-                    await self.async_set_unique_id(unique_id)
-                    self._abort_if_unique_id_configured()
-
-                    return self.async_create_entry(
-                        title=f"PNZEO {device_id or host}",
-                        data={
-                            CONF_HOST: host,
-                            CONF_USERNAME: DEFAULT_USERNAME,
-                            CONF_PASSWORD: password,
-                            CONF_DEVICE_ID: device_id,
-                            CONF_RTSP_PORT: rtsp_port,
-                        },
-                    )
+                return self.async_create_entry(
+                    title=f"PNZEO {device_id or host}",
+                    data={
+                        CONF_HOST: host,
+                        CONF_USERNAME: DEFAULT_USERNAME,
+                        CONF_PASSWORD: password,
+                        CONF_DEVICE_ID: device_id,
+                        CONF_RTSP_PORT: rtsp_port,
+                    },
+                )
 
         # Pre-fill device_id if discovered
         device_id = ""
