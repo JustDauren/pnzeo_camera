@@ -65,7 +65,11 @@ Plans:
   3. An EventEntity fires HA events on motion/GPIO/sound alarm triggers that can be used in automations
   4. Sensors display SD card capacity (total/used/free) and device info (firmware, model)
   5. Integration diagnostics page shows connection stats, protocol state, last errors, and full capability dump
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 03-01-PLAN.md -- Binary sensors (connection + motion), sensors (SD card + device info), alarm event entity
+- [ ] 03-02-PLAN.md -- Integration diagnostics (connection stats + capability dump)
 
 ### Phase 4: SD Card Features
 **Goal**: Users can manage SD card recordings and browse/download files from HA
@@ -109,8 +113,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Connection Reliability | 3/3 | Complete | - |
-| 2. CGI Command Expansion | 0/4 | Planned | - |
-| 3. Event & Sensor Entities | 0/0 | Not started | - |
+| 2. CGI Command Expansion | 4/4 | Complete | - |
+| 3. Event & Sensor Entities | 0/2 | Planned | - |
 | 4. SD Card Features | 0/0 | Not started | - |
 | 5. Two-Way Audio | 0/0 | Not started | - |
 | 6. Config Flow & Polish | 0/0 | Not started | - |
