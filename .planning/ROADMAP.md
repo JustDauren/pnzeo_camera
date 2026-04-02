@@ -114,7 +114,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 06-01-PLAN.md -- Enhanced config flow: discovery, manual UID, password validation, capability storage
+- [x] 06-01-PLAN.md -- Enhanced config flow: discovery, manual UID, password validation, capability storage
 
 ## Progress
 

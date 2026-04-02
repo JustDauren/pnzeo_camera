@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-04-02T17:04:55.335Z"
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-04-02T17:16:16.569Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 6
-  completed_phases: 5
-  total_plans: 13
-  completed_plans: 13
+  completed_phases: 6
+  total_plans: 14
+  completed_plans: 14
   percent: 0
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** Full camera control from HA -- install via HACS, enter password, everything works autonomously on Pi5
-**Current focus:** Phase 05 — two-way-audio
+**Current focus:** Phase 06 — config-flow-polish
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
+Phase: 06 (config-flow-polish) — EXECUTING
+Plan: 1 of 1
 Status: Phase complete — ready for verification
 Last activity: 2026-04-02
 
@@ -65,6 +65,7 @@ Progress: [..........] 0%
 | Phase 04 P02 | 3min | 2 tasks | 2 files |
 | Phase 05 P01 | 5min | 2 tasks | 3 files |
 | Phase 05 P02 | 3min | 2 tasks | 5 files |
+| Phase 06 P01 | 2min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,8 @@ Recent decisions affecting current work:
 - [Phase 05]: Microphone switch uses coordinator-data-driven state (voice_enable param) matching PNZEOMotionSwitch pattern
 - [Phase 05]: Talk service accepts base64 PCM and encodes to A-law inline -- simple one-shot pipeline via HA service call
 - [Phase 05]: Audio events fired on HA bus (pnzeo_camera_audio_started/stopped) for automation triggers
+- [Phase 06]: Manual step accepts device_id (required) + host (optional) -- UID is primary identifier
+- [Phase 06]: Capabilities stored as plain dict in config_entry.data for entity platform conditional creation
 
 ### Pending Todos
 
@@ -121,6 +124,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T17:04:09.134Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-04-02T17:16:16.566Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None

@@ -15,10 +15,10 @@
 
 ### Config Flow
 
-- [ ] **CONF-01**: Auto-discovery via LAN scan (UDP 8600 + 32108) -- user picks camera from list
-- [ ] **CONF-02**: Manual UID entry as fallback option
-- [ ] **CONF-03**: Password validation during setup (check_user.cgi)
-- [ ] **CONF-04**: Device capabilities detected at setup (RTGetCapability) -- adapt available entities
+- [x] **CONF-01**: Auto-discovery via LAN scan (UDP 8600 + 32108) -- user picks camera from list
+- [x] **CONF-02**: Manual UID entry as fallback option
+- [x] **CONF-03**: Password validation during setup (check_user.cgi)
+- [x] **CONF-04**: Device capabilities detected at setup (RTGetCapability) -- adapt available entities
 
 ### Alarm & Motion Detection
 
@@ -129,10 +129,10 @@
 | CONN-03 | Phase 1 | Complete |
 | CONN-04 | Phase 3 | Complete |
 | CONN-05 | Phase 1 | Complete |
-| CONF-01 | Phase 6 | Pending |
-| CONF-02 | Phase 6 | Pending |
-| CONF-03 | Phase 6 | Pending |
-| CONF-04 | Phase 6 | Pending |
+| CONF-01 | Phase 6 | Complete |
+| CONF-02 | Phase 6 | Complete |
+| CONF-03 | Phase 6 | Complete |
+| CONF-04 | Phase 6 | Complete |
 | ALRM-01 | Phase 2 | Complete |
 | ALRM-02 | Phase 2 | Complete |
 | ALRM-03 | Phase 2 | Complete |
