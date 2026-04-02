@@ -50,8 +50,8 @@ RELAY_CONNECT_WAIT = 3.0       # Wait for camera to connect to relay after punch
 class ConnectionState(IntEnum):
     """PPPP connection lifecycle states.
 
-    Replaces legacy PPPP_STATUS_* constants.
-    Mapping: UNKNOWN=-1->n/a, CONNECTING=0->CONNECTING, INITIALING=1->AUTHENTICATING,
+    Mapping from legacy integer statuses:
+    UNKNOWN=-1->n/a, CONNECTING=0->CONNECTING, INITIALING=1->AUTHENTICATING,
     ONLINE=2->CONNECTED, CONNECT_FAILED=3->FAILED, DISCONNECT=4->DISCONNECTED,
     AUTHENTICATED=10->CONNECTED (post-login).
     """
