@@ -18,6 +18,7 @@ async def async_setup_entry(
     async_add_entities([
         PNZEOResolution(coordinator),
         PNZEOMirror(coordinator),
+        PNZEOAlarmAction(coordinator),
     ])
 
 
@@ -59,3 +60,46 @@ class PNZEOMirror(PNZEOEntity, SelectEntity):
             await self.coordinator.device.client.set_mirror(rev[option])
             self._current = option
             self.async_write_ha_state()
+
+
+# Alarm action option mapping: option -> (mail, snapshot, record)
+_ALARM_ACTION_MAP = {
+    "None": ("0", "0", "0"),
+    "Mail": ("1", "0", "0"),
+    "Snapshot": ("0", "1", "0"),
+    "Record": ("0", "0", "1"),
+    "Mail + Snapshot": ("1", "1", "0"),
+    "Mail + Record": ("1", "0", "1"),
+    "Snapshot + Record": ("0", "1", "1"),
+    "All": ("1", "1", "1"),
+}
+
+# Reverse lookup: (mail, snapshot, record) -> option
+_ALARM_ACTION_REVERSE = {v: k for k, v in _ALARM_ACTION_MAP.items()}
+
+
+class PNZEOAlarmAction(PNZEOEntity, SelectEntity):
+    """Alarm action select (mail/snapshot/record combinations)."""
+    _attr_icon = "mdi:bell-cog"
+    _attr_options = list(_ALARM_ACTION_MAP.keys())
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(self, coordinator: PNZEOCoordinator) -> None:
+        super().__init__(coordinator, "alarm_action", "Alarm Action")
+
+    @property
+    def current_option(self) -> str:
+        mail = self.coordinator.data.get("mail", "0")
+        snapshot = self.coordinator.data.get("snapshot", "0")
+        record = self.coordinator.data.get("record", "0")
+        return _ALARM_ACTION_REVERSE.get((mail, snapshot, record), "None")
+
+    async def async_select_option(self, option: str) -> None:
+        values = _ALARM_ACTION_MAP.get(option)
+        if values is None:
+            return
+        mail, snapshot, record = values
+        await self.coordinator.device.client.set_alarm_params(
+            mail=int(mail), snapshot=int(snapshot), record=int(record)
+        )
+        await self.coordinator.async_request_refresh()

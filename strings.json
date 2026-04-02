@@ -105,6 +105,10 @@
           "description": "New password for the camera (will be saved in integration config)"
         }
       }
+    },
+    "get_alarm_log": {
+      "name": "Get Alarm Log",
+      "description": "Retrieve alarm log entries from camera"
     }
   }
 }

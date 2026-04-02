@@ -22,6 +22,8 @@ async def async_setup_entry(
         PNZEOMotionSwitch(coordinator),
         PNZEORecordingSwitch(coordinator),
         PNZEOLEDSwitch(coordinator),
+        PNZEOSoundAlarmSwitch(coordinator),
+        PNZEOGPIOAlarmSwitch(coordinator),
     ])
 
 
@@ -52,21 +54,18 @@ class PNZEOMotionSwitch(PNZEOEntity, SwitchEntity):
 
     def __init__(self, coordinator: PNZEOCoordinator) -> None:
         super().__init__(coordinator, "motion_detection", "Motion Detection")
-        self._is_on = True
 
     @property
     def is_on(self) -> bool:
-        return self._is_on
+        return self.coordinator.data.get("motion_armed", "1") == "1"
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self.coordinator.device.client.set_motion_detection(True)
-        self._is_on = True
-        self.async_write_ha_state()
+        await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self.coordinator.device.client.set_motion_detection(False)
-        self._is_on = False
-        self.async_write_ha_state()
+        await self.coordinator.async_request_refresh()
 
 
 class PNZEORecordingSwitch(PNZEOEntity, SwitchEntity):
@@ -111,3 +110,45 @@ class PNZEOLEDSwitch(PNZEOEntity, SwitchEntity):
         await self.coordinator.device.client.set_indicator_led(False)
         self._is_on = False
         self.async_write_ha_state()
+
+
+class PNZEOSoundAlarmSwitch(PNZEOEntity, SwitchEntity):
+    """Sound detection alarm switch."""
+    _attr_icon = "mdi:volume-vibrate"
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(self, coordinator: PNZEOCoordinator) -> None:
+        super().__init__(coordinator, "sound_alarm", "Sound Detection Alarm")
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.data.get("input_armed", "0") == "1"
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self.coordinator.device.client.set_sound_detection(True)
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self.coordinator.device.client.set_sound_detection(False)
+        await self.coordinator.async_request_refresh()
+
+
+class PNZEOGPIOAlarmSwitch(PNZEOEntity, SwitchEntity):
+    """GPIO alarm input switch."""
+    _attr_icon = "mdi:electric-switch"
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(self, coordinator: PNZEOCoordinator) -> None:
+        super().__init__(coordinator, "gpio_alarm", "GPIO Alarm")
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.data.get("ioEnable", "0") == "1"
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self.coordinator.device.client.set_gpio_alarm(True)
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self.coordinator.device.client.set_gpio_alarm(False)
+        await self.coordinator.async_request_refresh()

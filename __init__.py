@@ -152,3 +152,18 @@ def _register_services(hass: HomeAssistant) -> None:
         DOMAIN, "change_password", handle_change_password,
         schema=vol.Schema({vol.Required("new_password"): str}),
     )
+
+    async def handle_get_alarm_log(call: ServiceCall) -> None:
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                log_entries = await coordinator.device.client.get_alarm_log()
+                hass.bus.async_fire(
+                    f"{DOMAIN}_alarm_log",
+                    {"entries": log_entries},
+                )
+                break
+
+    hass.services.async_register(
+        DOMAIN, "get_alarm_log", handle_get_alarm_log,
+        schema=vol.Schema({}),
+    )

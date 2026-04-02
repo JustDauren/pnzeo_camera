@@ -74,3 +74,7 @@ change_password:
       required: true
       selector:
         text:
+
+get_alarm_log:
+  name: Get Alarm Log
+  description: Retrieve alarm log entries from camera

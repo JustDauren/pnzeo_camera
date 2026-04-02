@@ -1,6 +1,7 @@
 """DataUpdateCoordinator for PNZEO camera."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 from typing import Any
@@ -55,6 +56,15 @@ class PNZEOCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             try:
                 await client.get_status()
                 await client.get_camera_params()
+                # Alarm params polling (5s timeout each to protect Pi5 60s budget)
+                try:
+                    await asyncio.wait_for(client.get_alarm_params(), timeout=5.0)
+                except (asyncio.TimeoutError, Exception):
+                    _LOGGER.debug("Alarm params polling failed or timed out")
+                try:
+                    await asyncio.wait_for(client.get_alarm_ex_params(), timeout=5.0)
+                except (asyncio.TimeoutError, Exception):
+                    _LOGGER.debug("Alarm EX params polling failed or timed out")
                 self._pppp_available = True
                 return self._build_data(client)
             except Exception as ex:
