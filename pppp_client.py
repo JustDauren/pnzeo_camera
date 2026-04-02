@@ -388,12 +388,17 @@ class _PNZEOProtocol(asyncio.DatagramProtocol):
                 pkt_type, addr[0], addr[1], len(data),
             )
 
-        # LAN Search response (F141 PUNCH_PKT) — extract P2P port
+        # F141 PUNCH_PKT — camera's response to LAN search OR punch
         if pkt_type == PktType.PUNCH_PKT and addr[0] == self.client.host:
-            self.client._cam_port = addr[1]
+            # First F141 = LAN discovery → save port
+            if not self.client._cam_port:
+                self.client._cam_port = addr[1]
+            # F141 also counts as P2P handshake response
+            if not self.got_p2p_rdy:
+                self.got_p2p_rdy = True
             self.client._drw_response.set()
 
-        # P2P handshake response
+        # F142/F143 P2P_RDY — also valid handshake
         elif pkt_type in (PktType.P2P_RDY, PktType.P2P_RDY_ACK):
             if not self.got_p2p_rdy:
                 self.got_p2p_rdy = True
