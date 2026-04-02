@@ -9,9 +9,11 @@
         }
       },
       "manual": {
-        "title": "Camera IP",
+        "title": "Manual Entry",
+        "description": "Enter the camera UID (printed on camera label). IP address is optional for LAN-only cameras.",
         "data": {
-          "host": "IP Address"
+          "device_id": "Camera UID",
+          "host": "IP Address (optional)"
         }
       },
       "pick": {
@@ -25,7 +27,6 @@
         "description": "Enter the camera password (factory default: 8888). We strongly recommend changing it after setup.",
         "data": {
           "password": "Password",
-          "device_id": "Device ID",
           "rtsp_port": "RTSP port"
         }
       }
@@ -37,7 +38,8 @@
     "error": {
       "cannot_connect": "Cannot connect to camera. Check IP and port.",
       "invalid_auth": "Wrong password. Check credentials.",
-      "password_change_failed": "Failed to change password on camera."
+      "password_change_failed": "Failed to change password on camera.",
+      "unknown": "Unexpected error. Check logs for details."
     }
   },
   "options": {

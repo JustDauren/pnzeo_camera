@@ -4,6 +4,7 @@ from enum import IntEnum
 DOMAIN = "pnzeo_camera"
 CONF_DEVICE_ID = "device_id"
 CONF_RTSP_PORT = "rtsp_port"
+CONF_CAPABILITIES = "capabilities"
 
 # Defaults
 DEFAULT_USERNAME = "admin"
