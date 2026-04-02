@@ -84,7 +84,7 @@ def client():
 def connected_client(client, mock_transport):
     """Create a PNZEOClient that appears connected."""
     client._transport = mock_transport
-    client._connected = True
-    client._authenticated = True
+    client._state = ConnectionState.CONNECTED
     client._cam_port = 10000
+    client._last_keepalive_sent = 0.0
     return client
