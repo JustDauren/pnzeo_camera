@@ -1,4 +1,5 @@
 """Constants for PNZEO Camera integration."""
+from enum import IntEnum
 
 DOMAIN = "pnzeo_camera"
 CONF_DEVICE_ID = "device_id"
@@ -46,19 +47,26 @@ RELAY_PUNCH_INTERVAL = 0.1     # Seconds between F183 packets
 RELAY_KEEPALIVE_INTERVAL = 1   # Seconds — relay drops connection without frequent heartbeat
 RELAY_CONNECT_WAIT = 3.0       # Wait for camera to connect to relay after punch
 
-# PPPP Connection States
-PPPP_STATUS_UNKNOWN = -1
-PPPP_STATUS_CONNECTING = 0
-PPPP_STATUS_INITIALING = 1
-PPPP_STATUS_ONLINE = 2
-PPPP_STATUS_CONNECT_FAILED = 3
-PPPP_STATUS_DISCONNECT = 4
-PPPP_STATUS_INVALID_ID = 5
-PPPP_STATUS_DEVICE_OFFLINE = 6
-PPPP_STATUS_TIMEOUT = 7
-PPPP_STATUS_ERROR = 8
-PPPP_STATUS_MAX_CONNECTIONS = 9
-PPPP_STATUS_AUTHENTICATED = 10
+class ConnectionState(IntEnum):
+    """PPPP connection lifecycle states.
+
+    Replaces legacy PPPP_STATUS_* constants.
+    Mapping: UNKNOWN=-1->n/a, CONNECTING=0->CONNECTING, INITIALING=1->AUTHENTICATING,
+    ONLINE=2->CONNECTED, CONNECT_FAILED=3->FAILED, DISCONNECT=4->DISCONNECTED,
+    AUTHENTICATED=10->CONNECTED (post-login).
+    """
+    DISCONNECTED = 0
+    CONNECTING = 1
+    AUTHENTICATING = 2
+    CONNECTED = 3
+    RECONNECTING = 4
+    FAILED = 5
+
+# Reconnection backoff
+BACKOFF_BASE = 2.0
+BACKOFF_MAX_LAN = 30.0
+BACKOFF_MAX_CLOUD = 60.0
+MAX_RECONNECT_ATTEMPTS = 5
 
 # PPPP Packet Types (legacy single-byte, used after connection established)
 PKT_HELLO = 0xF1
