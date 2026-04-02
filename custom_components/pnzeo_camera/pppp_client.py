@@ -40,13 +40,14 @@ from .pppp_packets import (
 
 _LOGGER = logging.getLogger(__name__)
 
-CONNECT_TIMEOUT = 10
-COMMAND_TIMEOUT = 8
-KEEPALIVE_INTERVAL = 3
-PUNCH_COUNT = 12
-PUNCH_INTERVAL = 0.15
-DRW_RETRY_MAX = 25
-DRW_RETRY_INTERVAL = 0.4
+CONNECT_TIMEOUT = 5       # UDP endpoint creation timeout
+COMMAND_TIMEOUT = 8       # Single command response timeout
+KEEPALIVE_INTERVAL = 3    # Seconds between keepalive packets
+PUNCH_COUNT = 8           # F141 punches (camera needs burst)
+PUNCH_INTERVAL = 0.1      # Seconds between punches
+DRW_RETRY_MAX = 20        # CGI retries during F142 flood
+DRW_RETRY_INTERVAL = 0.3  # Seconds between DRW retries
+CLOUD_TIMEOUT = 3         # Cloud server UDP response timeout
 CLOUD_PORT = 32100
 
 
@@ -176,7 +177,7 @@ class PNZEOClient:
                 sock.sendto(hello, (server_host, server_port))
 
                 # Wait for Hello ACK
-                if not await self._udp_wait(sock, 0x01, 3.0):
+                if not await self._udp_wait(sock, 0x01, CLOUD_TIMEOUT):
                     sock.close()
                     continue
 
@@ -186,8 +187,8 @@ class PNZEOClient:
                 sock.sendto(p2p, (server_host, server_port))
 
                 # Wait for F140 (PUNCH_TO) with camera's LAN IP
-                for _ in range(8):
-                    data = await self._udp_recv(sock, 3.0)
+                for _ in range(5):
+                    data = await self._udp_recv(sock, CLOUD_TIMEOUT)
                     if not data or len(data) < 12:
                         continue
                     if data[0] == 0xF1 and data[1] == 0x40:

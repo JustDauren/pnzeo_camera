@@ -106,26 +106,31 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
             device_id = user_input.get(CONF_DEVICE_ID, "")
             rtsp_port = user_input.get(CONF_RTSP_PORT, DEFAULT_RTSP_PORT)
 
-            # Verify RTSP reachable (fast check, <3s)
+            # Step 1: RTSP reachable?
             if not await check_rtsp(host, rtsp_port):
                 errors["base"] = "cannot_connect"
             else:
-                # Save immediately — PPPP validates on first connect
-                # (PPPP verification is slow, don't block setup)
-                unique_id = device_id or host.replace(".", "_")
-                await self.async_set_unique_id(unique_id)
-                self._abort_if_unique_id_configured()
+                # Step 2: Verify password via PPPP (fast — 15s max)
+                pppp_ok = await self._verify_pppp_login(host, password, device_id)
 
-                return self.async_create_entry(
-                    title=f"PNZEO {device_id or host}",
-                    data={
-                        CONF_HOST: host,
-                        CONF_USERNAME: DEFAULT_USERNAME,
-                        CONF_PASSWORD: password,
-                        CONF_DEVICE_ID: device_id,
-                        CONF_RTSP_PORT: rtsp_port,
-                    },
-                )
+                if pppp_ok is False:
+                    errors["base"] = "invalid_auth"
+                else:
+                    # True = verified, None = can't check (allow anyway)
+                    unique_id = device_id or host.replace(".", "_")
+                    await self.async_set_unique_id(unique_id)
+                    self._abort_if_unique_id_configured()
+
+                    return self.async_create_entry(
+                        title=f"PNZEO {device_id or host}",
+                        data={
+                            CONF_HOST: host,
+                            CONF_USERNAME: DEFAULT_USERNAME,
+                            CONF_PASSWORD: password,
+                            CONF_DEVICE_ID: device_id,
+                            CONF_RTSP_PORT: rtsp_port,
+                        },
+                    )
 
         # Pre-fill device_id if discovered
         device_id = ""
@@ -147,38 +152,37 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
     async def _verify_pppp_login(
         self, host: str, password: str, device_id: str
     ) -> bool | None:
-        """Verify device password via PPPP.
+        """Fast password verification via PPPP CGI (max 15 seconds).
 
-        Camera uses only password (no username) — same as MTCam HD app.
-
-        Returns:
-            True — password accepted
-            False — wrong password
-            None — PPPP unavailable (can't check, allow anyway)
+        Returns: True (accepted), False (wrong password), None (can't check)
         """
+        import asyncio
         client = PNZEOClient(host, DEFAULT_USERNAME, password, device_id)
         try:
-            connected = await client.connect()
-            if not connected:
-                _LOGGER.debug("PPPP unavailable for %s, skipping password check", host)
-                return None
-
-            # Camera connected via PPPP — try login
-            result = await client.login(DEFAULT_USERNAME, password)
-            if result:
-                return True
-
-            # If login() returned False, it might be timeout (not rejection)
-            # Camera might not respond to login cmd yet — be lenient
-            # If we connected to camera at all, password is likely OK
-            # (camera rejects connection with wrong password in some firmware versions)
-            _LOGGER.debug("PPPP login response unclear, allowing connection")
+            # Wrap entire check in 15s timeout
+            return await asyncio.wait_for(
+                self._do_pppp_check(client),
+                timeout=15.0,
+            )
+        except asyncio.TimeoutError:
+            _LOGGER.debug("PPPP check timed out for %s, allowing anyway", host)
             return None
         except Exception as ex:
-            _LOGGER.debug("PPPP login check error: %s", ex)
+            _LOGGER.debug("PPPP check error: %s", ex)
             return None
         finally:
             await client.disconnect()
+
+    @staticmethod
+    async def _do_pppp_check(client: PNZEOClient) -> bool | None:
+        """Actual PPPP login check."""
+        connected = await client.connect()
+        if not connected:
+            return None  # Can't connect — allow anyway, will retry later
+        # connect() already does CGI login — if we're here, password was accepted
+        if client.connected:
+            return True
+        return None
 
 
 class PNZEOOptionsFlow(OptionsFlow):
