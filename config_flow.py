@@ -1,6 +1,7 @@
 """Config flow for PNZEO Camera."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -11,7 +12,7 @@ from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 
 from .const import (
-    CONF_DEVICE_ID, CONF_RTSP_PORT,
+    CONF_CAPABILITIES, CONF_DEVICE_ID, CONF_RTSP_PORT,
     DEFAULT_PASSWORD, DEFAULT_RTSP_PORT, DEFAULT_USERNAME, DOMAIN,
 )
 from .pppp_client import PNZEOClient
@@ -28,6 +29,8 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         self._discovered: list[dict] = []
         self._host: str = ""
+        self._device_id: str = ""
+        self._capabilities: dict = {}
 
     @staticmethod
     @callback
@@ -36,7 +39,7 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
         return PNZEOOptionsFlow(config_entry)
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Handle initial step — choose discovery or manual."""
+        """Handle initial step -- choose discovery or manual."""
         if user_input is not None:
             if user_input.get("method") == "discover":
                 return await self.async_step_discover()
@@ -46,8 +49,8 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema({
                 vol.Required("method", default="discover"): vol.In({
-                    "discover": "Автопоиск в сети",
-                    "manual": "Ввести IP вручную",
+                    "discover": "Auto-discover on LAN",
+                    "manual": "Enter UID manually",
                 }),
             }),
         )
@@ -60,11 +63,13 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="no_devices_found")
 
         if len(self._discovered) == 1:
-            self._host = self._discovered[0]["ip"]
+            d = self._discovered[0]
+            self._host = d["ip"]
+            self._device_id = d.get("device_id", "")
             return await self.async_step_credentials()
 
-        # Multiple cameras found
-        cameras = {d["ip"]: f"{d['device_id']} ({d['ip']})" for d in self._discovered}
+        # Multiple cameras found -- show pick list
+        cameras = {d["ip"]: f"{d.get('device_id', 'unknown')} ({d['ip']})" for d in self._discovered}
         return self.async_show_form(
             step_id="pick",
             data_schema=vol.Schema({
@@ -76,74 +81,76 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
         """Pick discovered camera."""
         if user_input:
             self._host = user_input["ip"]
+            # Find device_id from discovered list
+            for d in self._discovered:
+                if d["ip"] == self._host:
+                    self._device_id = d.get("device_id", "")
+                    break
             return await self.async_step_credentials()
         return await self.async_step_discover()
 
     async def async_step_manual(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Manual entry."""
-        errors = {}
+        """Manual UID + optional IP entry."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            host = user_input[CONF_HOST]
-            if await check_rtsp(host):
-                self._host = host
-                return await self.async_step_credentials(user_input)
-            errors["base"] = "cannot_connect"
+            self._device_id = user_input.get(CONF_DEVICE_ID, "")
+            self._host = user_input.get(CONF_HOST, "")
+
+            if self._host:
+                # Validate IP reachability via RTSP port check
+                if not await check_rtsp(self._host):
+                    errors["base"] = "cannot_connect"
+                else:
+                    return await self.async_step_credentials()
+            else:
+                # UID-only (cloud relay), proceed directly
+                return await self.async_step_credentials()
 
         return self.async_show_form(
             step_id="manual",
             data_schema=vol.Schema({
-                vol.Required(CONF_HOST): str,
+                vol.Required(CONF_DEVICE_ID): str,
+                vol.Optional(CONF_HOST, default=""): str,
             }),
             errors=errors,
         )
 
     async def async_step_credentials(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Enter device password — no username needed (like in MTCam HD app)."""
-        errors = {}
+        """Enter password and RTSP port. Validates via PPPP check_user.cgi."""
+        errors: dict[str, str] = {}
         if user_input is not None and CONF_PASSWORD in user_input:
-            host = self._host
             password = user_input[CONF_PASSWORD]
-            device_id = user_input.get(CONF_DEVICE_ID, "")
             rtsp_port = user_input.get(CONF_RTSP_PORT, DEFAULT_RTSP_PORT)
 
-            # Step 1: RTSP reachable?
-            if not await check_rtsp(host, rtsp_port):
-                errors["base"] = "cannot_connect"
+            # Verify password via PPPP (15s max)
+            pppp_ok = await self._verify_pppp_login(
+                self._host, password, self._device_id
+            )
+
+            if pppp_ok is False:
+                errors["base"] = "invalid_auth"
             else:
-                # Step 2: Verify password via PPPP (fast — 15s max)
-                pppp_ok = await self._verify_pppp_login(host, password, device_id)
+                # True = verified, None = can't check (allow anyway)
+                unique_id = self._device_id or self._host.replace(".", "_")
+                await self.async_set_unique_id(unique_id)
+                self._abort_if_unique_id_configured()
 
-                if pppp_ok is False:
-                    errors["base"] = "invalid_auth"
-                else:
-                    # True = verified, None = can't check (allow anyway)
-                    unique_id = device_id or host.replace(".", "_")
-                    await self.async_set_unique_id(unique_id)
-                    self._abort_if_unique_id_configured()
-
-                    return self.async_create_entry(
-                        title=f"PNZEO {device_id or host}",
-                        data={
-                            CONF_HOST: host,
-                            CONF_USERNAME: DEFAULT_USERNAME,
-                            CONF_PASSWORD: password,
-                            CONF_DEVICE_ID: device_id,
-                            CONF_RTSP_PORT: rtsp_port,
-                        },
-                    )
-
-        # Pre-fill device_id if discovered
-        device_id = ""
-        for d in self._discovered:
-            if d.get("ip") == self._host:
-                device_id = d.get("device_id", "")
-                break
+                return self.async_create_entry(
+                    title=f"PNZEO {self._device_id or self._host}",
+                    data={
+                        CONF_HOST: self._host,
+                        CONF_USERNAME: DEFAULT_USERNAME,
+                        CONF_PASSWORD: password,
+                        CONF_DEVICE_ID: self._device_id,
+                        CONF_RTSP_PORT: rtsp_port,
+                        CONF_CAPABILITIES: self._capabilities,
+                    },
+                )
 
         return self.async_show_form(
             step_id="credentials",
             data_schema=vol.Schema({
                 vol.Required(CONF_PASSWORD): str,
-                vol.Optional(CONF_DEVICE_ID, default=device_id): str,
                 vol.Optional(CONF_RTSP_PORT, default=DEFAULT_RTSP_PORT): int,
             }),
             errors=errors,
@@ -155,38 +162,42 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
         """Fast password verification via PPPP CGI (max 15 seconds).
 
         Returns: True (accepted), False (wrong password), None (can't check)
+        Also populates self._capabilities from check_user.cgi response.
         """
-        import asyncio
         client = PNZEOClient(host, DEFAULT_USERNAME, password, device_id)
         try:
-            # Wrap entire check in 15s timeout
             return await asyncio.wait_for(
                 self._do_pppp_check(client),
                 timeout=15.0,
             )
         except asyncio.TimeoutError:
             _LOGGER.debug("PPPP check timed out for %s, allowing anyway", host)
+            self._capabilities = {}
             return None
         except Exception as ex:
             _LOGGER.debug("PPPP check error: %s", ex)
+            self._capabilities = {}
             return None
         finally:
             await client.disconnect()
 
-    @staticmethod
-    async def _do_pppp_check(client: PNZEOClient) -> bool | None:
-        """Actual PPPP login check."""
+    async def _do_pppp_check(self, client: PNZEOClient) -> bool | None:
+        """Actual PPPP login check. Captures capabilities on success."""
         connected = await client.connect()
         if not connected:
-            return None  # Can't connect — allow anyway, will retry later
-        # connect() already does CGI login — if we're here, password was accepted
+            self._capabilities = {}
+            return None  # Can't connect -- allow anyway, will retry later
+        # connect() already does CGI login -- if we're here, password was accepted
         if client.connected:
+            self._capabilities = client.capabilities
             return True
+        # Transport connected but CGI login failed
+        self._capabilities = {}
         return None
 
 
 class PNZEOOptionsFlow(OptionsFlow):
-    """Options flow for PNZEO Camera — change password, settings."""
+    """Options flow for PNZEO Camera -- change password, settings."""
 
     def __init__(self, config_entry: ConfigEntry) -> None:
         self._entry = config_entry
