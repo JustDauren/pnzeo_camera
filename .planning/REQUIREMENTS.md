@@ -11,7 +11,7 @@
 - [ ] **CONN-02**: Keepalive task never dies silently -- watchdog and logging
 - [ ] **CONN-03**: Socket lifecycle managed with context managers / try-finally
 - [ ] **CONN-04**: Connection status exposed as binary_sensor (connected/disconnected)
-- [ ] **CONN-05**: Protocol state machine uses explicit ConnectionState enum
+- [x] **CONN-05**: Protocol state machine uses explicit ConnectionState enum
 
 ### Config Flow
 
@@ -128,7 +128,7 @@
 | CONN-02 | Phase 1 | Pending |
 | CONN-03 | Phase 1 | Pending |
 | CONN-04 | Phase 3 | Pending |
-| CONN-05 | Phase 1 | Pending |
+| CONN-05 | Phase 1 | Complete |
 | CONF-01 | Phase 6 | Pending |
 | CONF-02 | Phase 6 | Pending |
 | CONF-03 | Phase 6 | Pending |
