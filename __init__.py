@@ -295,3 +295,98 @@ def _register_services(hass: HomeAssistant) -> None:
             vol.Optional("pwd3", default=""): str,
         }),
     )
+
+    # FTP, email, and push notification services (02-04)
+
+    async def handle_set_ftp(call: ServiceCall) -> None:
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                await coordinator.device.client.set_ftp(
+                    server=call.data["server"],
+                    port=call.data.get("port", 21),
+                    user=call.data.get("user", ""),
+                    password=call.data.get("password", ""),
+                    directory=call.data.get("directory", "/"),
+                    mode=call.data.get("mode", 1),
+                    upload_interval=call.data.get("upload_interval", 0),
+                )
+                break
+
+    hass.services.async_register(
+        DOMAIN, "set_ftp", handle_set_ftp,
+        schema=vol.Schema({
+            vol.Required("server"): str,
+            vol.Optional("port", default=21): int,
+            vol.Optional("user", default=""): str,
+            vol.Optional("password", default=""): str,
+            vol.Optional("directory", default="/"): str,
+            vol.Optional("mode", default=1): vol.In([0, 1]),
+            vol.Optional("upload_interval", default=0): int,
+        }),
+    )
+
+    async def handle_set_email(call: ServiceCall) -> None:
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                await coordinator.device.client.set_mail(
+                    smtp_server=call.data["smtp_server"],
+                    smtp_port=call.data.get("smtp_port", 587),
+                    user=call.data.get("user", ""),
+                    password=call.data.get("password", ""),
+                    sender=call.data.get("sender", ""),
+                    receiver=call.data["receiver"],
+                    ssl=call.data.get("ssl", 1),
+                )
+                break
+
+    hass.services.async_register(
+        DOMAIN, "set_email", handle_set_email,
+        schema=vol.Schema({
+            vol.Required("smtp_server"): str,
+            vol.Optional("smtp_port", default=587): int,
+            vol.Optional("user", default=""): str,
+            vol.Optional("password", default=""): str,
+            vol.Optional("sender", default=""): str,
+            vol.Required("receiver"): str,
+            vol.Optional("ssl", default=1): vol.In([0, 1]),
+        }),
+    )
+
+    async def handle_set_push_token(call: ServiceCall) -> None:
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                await coordinator.device.client.set_push_token(call.data["token"])
+                break
+
+    hass.services.async_register(
+        DOMAIN, "set_push_token", handle_set_push_token,
+        schema=vol.Schema({vol.Required("token"): str}),
+    )
+
+    async def handle_get_ftp_settings(call: ServiceCall) -> None:
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                ftp_params = await coordinator.device.client.get_ftp_params()
+                hass.bus.async_fire(
+                    f"{DOMAIN}_ftp_settings", {"settings": ftp_params},
+                )
+                break
+
+    hass.services.async_register(
+        DOMAIN, "get_ftp_settings", handle_get_ftp_settings,
+        schema=vol.Schema({}),
+    )
+
+    async def handle_get_email_settings(call: ServiceCall) -> None:
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                mail_params = await coordinator.device.client.get_mail_params()
+                hass.bus.async_fire(
+                    f"{DOMAIN}_email_settings", {"settings": mail_params},
+                )
+                break
+
+    hass.services.async_register(
+        DOMAIN, "get_email_settings", handle_get_email_settings,
+        schema=vol.Schema({}),
+    )

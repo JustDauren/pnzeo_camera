@@ -199,6 +199,92 @@
           "description": "Third user password"
         }
       }
+    },
+    "set_ftp": {
+      "name": "Configure FTP Upload",
+      "description": "Set FTP server for alarm snapshot/recording uploads",
+      "fields": {
+        "server": {
+          "name": "FTP Server",
+          "description": "FTP server hostname or IP"
+        },
+        "port": {
+          "name": "Port",
+          "description": "FTP port"
+        },
+        "user": {
+          "name": "Username",
+          "description": "FTP username"
+        },
+        "password": {
+          "name": "Password",
+          "description": "FTP password"
+        },
+        "directory": {
+          "name": "Directory",
+          "description": "Upload directory path"
+        },
+        "mode": {
+          "name": "Transfer Mode",
+          "description": "0 = Active (PORT), 1 = Passive (PASV)"
+        },
+        "upload_interval": {
+          "name": "Upload Interval",
+          "description": "Seconds between uploads (0 = every alarm)"
+        }
+      }
+    },
+    "set_email": {
+      "name": "Configure Email Notifications",
+      "description": "Set SMTP server for alarm email notifications",
+      "fields": {
+        "smtp_server": {
+          "name": "SMTP Server",
+          "description": "SMTP server hostname"
+        },
+        "smtp_port": {
+          "name": "SMTP Port",
+          "description": "SMTP port (587 for TLS)"
+        },
+        "user": {
+          "name": "Username",
+          "description": "SMTP username"
+        },
+        "password": {
+          "name": "Password",
+          "description": "SMTP password"
+        },
+        "sender": {
+          "name": "Sender Email",
+          "description": "From email address"
+        },
+        "receiver": {
+          "name": "Receiver Email",
+          "description": "Recipient email address"
+        },
+        "ssl": {
+          "name": "SSL/TLS",
+          "description": "0 = off, 1 = TLS/STARTTLS"
+        }
+      }
+    },
+    "set_push_token": {
+      "name": "Set Push Token",
+      "description": "Register FCM push notification token for alarm alerts",
+      "fields": {
+        "token": {
+          "name": "FCM Token",
+          "description": "Firebase Cloud Messaging token"
+        }
+      }
+    },
+    "get_ftp_settings": {
+      "name": "Get FTP Settings",
+      "description": "Retrieve current FTP upload configuration from camera (fires pnzeo_camera_ftp_settings event)"
+    },
+    "get_email_settings": {
+      "name": "Get Email Settings",
+      "description": "Retrieve current email notification configuration from camera (fires pnzeo_camera_email_settings event)"
     }
   }
 }
