@@ -9,8 +9,6 @@ from .coordinator import PNZEOCoordinator
 
 
 class PNZEOEntity(CoordinatorEntity[PNZEOCoordinator]):
-    """Base entity for PNZEO camera."""
-
     _attr_has_entity_name = True
 
     def __init__(self, coordinator: PNZEOCoordinator, key: str, name: str) -> None:
@@ -23,10 +21,9 @@ class PNZEOEntity(CoordinatorEntity[PNZEOCoordinator]):
             name=device.name,
             manufacturer="PNZEO",
             model="W8",
-            sw_version=device.client.state.get("firmware", "unknown"),
-            configuration_url=f"http://{device.host}",
         )
 
     @property
     def available(self) -> bool:
-        return self.coordinator.device.client.connected
+        data = self.coordinator.data or {}
+        return data.get("reachable", True)
