@@ -21,12 +21,12 @@
         }
       },
       "credentials": {
-        "title": "Camera Credentials",
+        "title": "Пароль камеры",
+        "description": "Введите пароль камеры (по умолчанию 8888)",
         "data": {
-          "username": "Username",
-          "password": "Password",
-          "device_id": "Device ID (optional)",
-          "rtsp_port": "RTSP Port"
+          "password": "Пароль",
+          "device_id": "Device ID",
+          "rtsp_port": "RTSP порт"
         }
       }
     },

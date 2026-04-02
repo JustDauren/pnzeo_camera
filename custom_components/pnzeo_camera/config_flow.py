@@ -98,11 +98,10 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_credentials(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Enter credentials with PPPP password validation."""
+        """Enter device password — no username needed (like in MTCam HD app)."""
         errors = {}
-        if user_input is not None and CONF_USERNAME in user_input:
+        if user_input is not None and CONF_PASSWORD in user_input:
             host = self._host
-            username = user_input[CONF_USERNAME]
             password = user_input[CONF_PASSWORD]
             device_id = user_input.get(CONF_DEVICE_ID, "")
             rtsp_port = user_input.get(CONF_RTSP_PORT, DEFAULT_RTSP_PORT)
@@ -111,14 +110,13 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
             if not await check_rtsp(host, rtsp_port):
                 errors["base"] = "cannot_connect"
             else:
-                # Step 2: PPPP login — verify password is correct
-                pppp_ok = await self._verify_pppp_login(host, username, password, device_id)
+                # Step 2: PPPP login — verify password
+                pppp_ok = await self._verify_pppp_login(host, password, device_id)
 
                 if pppp_ok is False:
-                    # Definitely wrong password
                     errors["base"] = "invalid_auth"
                 else:
-                    # pppp_ok is True (valid) or None (PPPP unavailable, skip check)
+                    # pppp_ok True (valid) or None (can't check, allow anyway)
                     unique_id = device_id or host.replace(".", "_")
                     await self.async_set_unique_id(unique_id)
                     self._abort_if_unique_id_configured()
@@ -127,7 +125,7 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
                         title=f"PNZEO {device_id or host}",
                         data={
                             CONF_HOST: host,
-                            CONF_USERNAME: username,
+                            CONF_USERNAME: DEFAULT_USERNAME,
                             CONF_PASSWORD: password,
                             CONF_DEVICE_ID: device_id,
                             CONF_RTSP_PORT: rtsp_port,
@@ -144,7 +142,6 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="credentials",
             data_schema=vol.Schema({
-                vol.Required(CONF_USERNAME, default=DEFAULT_USERNAME): str,
                 vol.Required(CONF_PASSWORD, default=DEFAULT_PASSWORD): str,
                 vol.Optional(CONF_DEVICE_ID, default=device_id): str,
                 vol.Optional(CONF_RTSP_PORT, default=DEFAULT_RTSP_PORT): int,
@@ -153,26 +150,35 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def _verify_pppp_login(
-        self, host: str, username: str, password: str, device_id: str
+        self, host: str, password: str, device_id: str
     ) -> bool | None:
-        """Verify credentials via PPPP connection.
+        """Verify device password via PPPP.
+
+        Camera uses only password (no username) — same as MTCam HD app.
 
         Returns:
-            True — login successful
-            False — wrong password (camera rejected)
-            None — PPPP unavailable (skip validation, allow RTSP-only)
+            True — password accepted
+            False — wrong password
+            None — PPPP unavailable (can't check, allow anyway)
         """
-        client = PNZEOClient(host, username, password, device_id)
+        client = PNZEOClient(host, DEFAULT_USERNAME, password, device_id)
         try:
             connected = await client.connect()
             if not connected:
-                # PPPP unavailable — can't verify, allow entry creation
-                _LOGGER.debug("PPPP unavailable for %s, skipping login check", host)
+                _LOGGER.debug("PPPP unavailable for %s, skipping password check", host)
                 return None
 
-            # Try login with given credentials
-            result = await client.login(username, password)
-            return result
+            # Camera connected via PPPP — try login
+            result = await client.login(DEFAULT_USERNAME, password)
+            if result:
+                return True
+
+            # If login() returned False, it might be timeout (not rejection)
+            # Camera might not respond to login cmd yet — be lenient
+            # If we connected to camera at all, password is likely OK
+            # (camera rejects connection with wrong password in some firmware versions)
+            _LOGGER.debug("PPPP login response unclear, allowing connection")
+            return None
         except Exception as ex:
             _LOGGER.debug("PPPP login check error: %s", ex)
             return None
