@@ -1,31 +1,31 @@
 # Requirements: PNZEO Camera Full HA Integration
 
 **Defined:** 2026-04-02
-**Core Value:** Full camera control from HA — install via HACS, enter password, everything works autonomously on Pi5
+**Core Value:** Full camera control from HA -- install via HACS, enter password, everything works autonomously on Pi5
 
 ## v1 Requirements
 
 ### Connection Reliability
 
 - [ ] **CONN-01**: Camera auto-reconnects on disconnect with exponential backoff
-- [ ] **CONN-02**: Keepalive task never dies silently — watchdog and logging
+- [ ] **CONN-02**: Keepalive task never dies silently -- watchdog and logging
 - [ ] **CONN-03**: Socket lifecycle managed with context managers / try-finally
 - [ ] **CONN-04**: Connection status exposed as binary_sensor (connected/disconnected)
 - [ ] **CONN-05**: Protocol state machine uses explicit ConnectionState enum
 
 ### Config Flow
 
-- [ ] **CONF-01**: Auto-discovery via LAN scan (UDP 8600 + 32108) — user picks camera from list
+- [ ] **CONF-01**: Auto-discovery via LAN scan (UDP 8600 + 32108) -- user picks camera from list
 - [ ] **CONF-02**: Manual UID entry as fallback option
 - [ ] **CONF-03**: Password validation during setup (check_user.cgi)
-- [ ] **CONF-04**: Device capabilities detected at setup (RTGetCapability) — adapt available entities
+- [ ] **CONF-04**: Device capabilities detected at setup (RTGetCapability) -- adapt available entities
 
 ### Alarm & Motion Detection
 
 - [ ] **ALRM-01**: Motion detection on/off switch
 - [ ] **ALRM-02**: Motion detection sensitivity setting (number entity, 1-10)
 - [ ] **ALRM-03**: Full alarm settings via CGI (alarm schedule, zones)
-- [ ] **ALRM-04**: Extended alarm settings (RTAlarmEXSetting — 11 params)
+- [ ] **ALRM-04**: Extended alarm settings (RTAlarmEXSetting -- 11 params)
 - [ ] **ALRM-05**: Motion detection binary_sensor (polling-based state)
 - [ ] **ALRM-06**: Alarm event entity (HA EventEntity for motion/GPIO/sound events)
 - [ ] **ALRM-07**: Sound detection alarm settings
@@ -53,7 +53,7 @@
 
 ### Camera Settings (Extended)
 
-- [ ] **CSET-01**: Extended IR/night vision settings (RTSetIrcutAttr — 5 params: mode, sensitivity, timing)
+- [ ] **CSET-01**: Extended IR/night vision settings (RTSetIrcutAttr -- 5 params: mode, sensitivity, timing)
 - [ ] **CSET-02**: IR mode select entity (auto/on/off/schedule)
 - [ ] **CSET-03**: Power frequency setting (50Hz/60Hz)
 - [ ] **CSET-04**: Device name setting (text entity)
@@ -90,7 +90,7 @@
 
 ### Snapshot & Recording
 
-- [ ] **SNAP-01**: Snapshot via PPPP (RTSnapJpeg — not just RTSP)
+- [ ] **SNAP-01**: Snapshot via PPPP (RTSnapJpeg -- not just RTSP)
 - [ ] **SNAP-02**: Manual recording trigger service
 
 ### Diagnostics
@@ -112,7 +112,7 @@
 
 | Feature | Reason |
 |---------|--------|
-| Cloud account system | Camera has no cloud accounts — all P2P |
+| Cloud account system | Camera has no cloud accounts -- all P2P |
 | Android/iOS app | HA-only integration |
 | QR code sharing | HA has its own device sharing model |
 | Local video playback in HA | HA doesn't support custom media players |
@@ -124,13 +124,66 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (To be filled during roadmap creation) | | |
+| CONN-01 | Phase 1 | Pending |
+| CONN-02 | Phase 1 | Pending |
+| CONN-03 | Phase 1 | Pending |
+| CONN-04 | Phase 3 | Pending |
+| CONN-05 | Phase 1 | Pending |
+| CONF-01 | Phase 6 | Pending |
+| CONF-02 | Phase 6 | Pending |
+| CONF-03 | Phase 6 | Pending |
+| CONF-04 | Phase 6 | Pending |
+| ALRM-01 | Phase 2 | Pending |
+| ALRM-02 | Phase 2 | Pending |
+| ALRM-03 | Phase 2 | Pending |
+| ALRM-04 | Phase 2 | Pending |
+| ALRM-05 | Phase 3 | Pending |
+| ALRM-06 | Phase 3 | Pending |
+| ALRM-07 | Phase 2 | Pending |
+| ALRM-08 | Phase 2 | Pending |
+| ALRM-09 | Phase 2 | Pending |
+| SDCD-01 | Phase 3 | Pending |
+| SDCD-02 | Phase 4 | Pending |
+| SDCD-03 | Phase 4 | Pending |
+| SDCD-04 | Phase 4 | Pending |
+| SDCD-05 | Phase 4 | Pending |
+| SDCD-06 | Phase 4 | Pending |
+| SDCD-07 | Phase 4 | Pending |
+| SDCD-08 | Phase 4 | Pending |
+| AUDI-01 | Phase 5 | Pending |
+| AUDI-02 | Phase 5 | Pending |
+| AUDI-03 | Phase 5 | Pending |
+| AUDI-04 | Phase 5 | Pending |
+| AUDI-05 | Phase 5 | Pending |
+| CSET-01 | Phase 2 | Pending |
+| CSET-02 | Phase 2 | Pending |
+| CSET-03 | Phase 2 | Pending |
+| CSET-04 | Phase 2 | Pending |
+| WIFI-01 | Phase 2 | Pending |
+| WIFI-02 | Phase 2 | Pending |
+| WIFI-03 | Phase 2 | Pending |
+| NETW-01 | Phase 2 | Pending |
+| NETW-02 | Phase 2 | Pending |
+| USER-01 | Phase 2 | Pending |
+| USER-02 | Phase 2 | Pending |
+| USER-03 | Phase 2 | Pending |
+| NOTF-01 | Phase 2 | Pending |
+| NOTF-02 | Phase 2 | Pending |
+| NOTF-03 | Phase 2 | Pending |
+| SYST-01 | Phase 2 | Pending |
+| SYST-02 | Phase 3 | Pending |
+| SYST-03 | Phase 2 | Pending |
+| SYST-04 | Phase 2 | Pending |
+| SNAP-01 | Phase 2 | Pending |
+| SNAP-02 | Phase 2 | Pending |
+| DIAG-01 | Phase 3 | Pending |
+| DIAG-02 | Phase 3 | Pending |
 
 **Coverage:**
-- v1 requirements: 47 total
-- Mapped to phases: 0
-- Unmapped: 47
+- v1 requirements: 54 total
+- Mapped to phases: 54
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-02 after initial definition*
+*Last updated: 2026-04-02 after roadmap creation*
