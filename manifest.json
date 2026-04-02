@@ -3,6 +3,7 @@
   "name": "PNZEO Camera",
   "codeowners": ["@daurentakibaev"],
   "config_flow": true,
+  "dependencies": ["media_source"],
   "documentation": "https://github.com/daurentakibaev/pnzeo_camera",
   "integration_type": "device",
   "iot_class": "local_polling",
