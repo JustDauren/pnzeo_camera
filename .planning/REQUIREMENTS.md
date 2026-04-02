@@ -60,20 +60,20 @@
 
 ### WiFi Configuration
 
-- [ ] **WIFI-01**: WiFi scan from HA (list available networks)
-- [ ] **WIFI-02**: WiFi connect to selected network (SSID + password)
-- [ ] **WIFI-03**: Current WiFi status sensor (SSID, signal strength)
+- [x] **WIFI-01**: WiFi scan from HA (list available networks)
+- [x] **WIFI-02**: WiFi connect to selected network (SSID + password)
+- [x] **WIFI-03**: Current WiFi status sensor (SSID, signal strength)
 
 ### Network Settings
 
-- [ ] **NETW-01**: LAN network settings view (IP, mask, gateway, DNS)
-- [ ] **NETW-02**: DDNS settings
+- [x] **NETW-01**: LAN network settings view (IP, mask, gateway, DNS)
+- [x] **NETW-02**: DDNS settings
 
 ### User Management
 
-- [ ] **USER-01**: View current users (3 slots)
-- [ ] **USER-02**: Change password service (RTUserSetting)
-- [ ] **USER-03**: Add/remove secondary users
+- [x] **USER-01**: View current users (3 slots)
+- [x] **USER-02**: Change password service (RTUserSetting)
+- [x] **USER-03**: Add/remove secondary users
 
 ### Notifications & Alerts
 
@@ -159,14 +159,14 @@
 | CSET-02 | Phase 2 | Complete |
 | CSET-03 | Phase 2 | Complete |
 | CSET-04 | Phase 2 | Complete |
-| WIFI-01 | Phase 2 | Pending |
-| WIFI-02 | Phase 2 | Pending |
-| WIFI-03 | Phase 2 | Pending |
-| NETW-01 | Phase 2 | Pending |
-| NETW-02 | Phase 2 | Pending |
-| USER-01 | Phase 2 | Pending |
-| USER-02 | Phase 2 | Pending |
-| USER-03 | Phase 2 | Pending |
+| WIFI-01 | Phase 2 | Complete |
+| WIFI-02 | Phase 2 | Complete |
+| WIFI-03 | Phase 2 | Complete |
+| NETW-01 | Phase 2 | Complete |
+| NETW-02 | Phase 2 | Complete |
+| USER-01 | Phase 2 | Complete |
+| USER-02 | Phase 2 | Complete |
+| USER-03 | Phase 2 | Complete |
 | NOTF-01 | Phase 2 | Pending |
 | NOTF-02 | Phase 2 | Pending |
 | NOTF-03 | Phase 2 | Pending |

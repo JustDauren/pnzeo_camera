@@ -52,7 +52,7 @@ Plans:
 Plans:
 - [x] 02-01-PLAN.md -- Alarm & motion detection (CGI methods + switch/number/select entities)
 - [x] 02-02-PLAN.md -- Camera settings, IR mode, system commands, snapshot/recording
-- [ ] 02-03-PLAN.md -- WiFi, network, and user management services
+- [x] 02-03-PLAN.md -- WiFi, network, and user management services
 - [ ] 02-04-PLAN.md -- FTP, email, and push notification services
 
 ### Phase 3: Event & Sensor Entities
