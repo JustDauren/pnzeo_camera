@@ -225,3 +225,26 @@ MIRROR_MAP = {
     MIRROR_HORIZONTAL: "Horizontal flip",
     MIRROR_BOTH: "Both",
 }
+
+# Audio format constants
+AUDIO_FORMAT_PCM = 0
+AUDIO_FORMAT_ALAW = 1
+AUDIO_FORMAT_ULAW = 2
+AUDIO_FORMAT_ADPCM = 3
+
+AUDIO_SAMPLE_RATE_MAP = {
+    0: 8000,
+    1: 16000,
+    2: 32000,
+}
+
+AUDIO_SAMPLE_RATE_DEFAULT = 8000
+AUDIO_CHANNELS_MONO = 1
+AUDIO_FRAME_DURATION_MS = 40
+AUDIO_FRAME_SIZE = 320  # 8000Hz * 0.040s * 1 byte/sample = 320 bytes per A-law frame
+
+# Audio binary protocol message types (inferred from APK JNI)
+MSG_START_AUDIO = 100
+MSG_STOP_AUDIO = 101
+MSG_START_TALK = 102
+MSG_STOP_TALK = 103
