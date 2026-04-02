@@ -32,7 +32,7 @@ _LOGGER = logging.getLogger(__name__)
 KEEPALIVE_INTERVAL = 3
 PUNCH_COUNT = 15       # Camera needs persistent punching
 PUNCH_INTERVAL = 0.12
-DRW_RETRY_MAX = 25
+DRW_RETRY_MAX = 35
 DRW_RETRY_INTERVAL = 0.3
 LAN_SEARCH_PORT = 32108
 PUNCH_WAIT = 5.0       # Wait for P2P handshake response
@@ -174,6 +174,11 @@ class PNZEOClient:
                 return False
 
             self._connected = True
+
+            # Send keepalive burst to stabilize channel before CGI
+            for _ in range(10):
+                self._transport.sendto(build_alive(), target)
+                await asyncio.sleep(0.15)
 
             # Step 3: CGI login (same socket!)
             if not await self._cgi_login():
