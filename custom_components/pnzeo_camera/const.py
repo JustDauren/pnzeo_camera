@@ -14,6 +14,36 @@ DEFAULT_PPPP_PORT = 32108
 RTSP_MAIN_STREAM = "/11"
 RTSP_SUB_STREAM = "/12"
 
+# --- PPPP Protocol Ports ---
+# Camera LAN discovery port (DH protocol, magic 44 48 01 01)
+PPPP_PORT_DH_LAN = 8600
+# Standard PPPP LAN discovery port (magic f1 30 00 00)
+PPPP_PORT_STANDARD = 32108
+# Cloud P2P relay port
+PPPP_PORT_CLOUD = 32100
+
+# DH protocol magic bytes for LAN discovery on port 8600
+DH_MAGIC = b"\x44\x48\x01\x01"
+# Standard PPPP LAN search magic
+PPPP_LAN_SEARCH_MAGIC = b"\xf1\x30\x00\x00"
+
+# Cloud P2P server list (tried in order)
+CLOUD_P2P_SERVERS = [
+    ("54.191.3.239", PPPP_PORT_CLOUD),     # AWS Oregon
+    ("54.186.48.247", PPPP_PORT_CLOUD),     # AWS Oregon
+    ("182.92.131.196", PPPP_PORT_CLOUD),    # China
+]
+
+# --- F1xx Message Types (PPPP signaling layer) ---
+# Two-byte big-endian message IDs used in the P2P handshake
+MSG_HELLO = 0xF100          # Client -> Server, 4 bytes
+MSG_HELLO_ACK = 0xF101      # Server -> Client, 20 bytes
+MSG_P2P_CONNECT = 0xF120    # Client -> Server, 40 bytes (PPRT + UID)
+MSG_P2P_READY = 0xF121      # Server -> Client, 8 bytes
+MSG_DRW_RESPONSE = 0xF140   # Server -> Client, 20 bytes (camera IPs)
+MSG_RELAY_REQ = 0xF167      # Client -> Server, 24 bytes (UID)
+MSG_PUNCH = 0xF180          # 44 bytes
+
 # PPPP Connection States
 PPPP_STATUS_UNKNOWN = -1
 PPPP_STATUS_CONNECTING = 0
@@ -28,7 +58,7 @@ PPPP_STATUS_ERROR = 8
 PPPP_STATUS_MAX_CONNECTIONS = 9
 PPPP_STATUS_AUTHENTICATED = 10
 
-# PPPP Packet Types
+# PPPP Packet Types (legacy single-byte, used after connection established)
 PKT_HELLO = 0xF1
 PKT_HELLO_ACK = 0xF1  # same type, response
 PKT_LAN_SEARCH = 0x67

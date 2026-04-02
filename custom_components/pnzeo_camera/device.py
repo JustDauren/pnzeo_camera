@@ -21,7 +21,7 @@ class PNZEODevice:
         self.password = password
         self.device_id = device_id
         self.rtsp_port = rtsp_port
-        self.client = PNZEOClient(host, username, password)
+        self.client = PNZEOClient(host, username, password, device_id=device_id)
 
     @property
     def rtsp_url(self) -> str:
