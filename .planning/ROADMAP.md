@@ -30,7 +30,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Keepalive failures are logged with timestamps and the watchdog restarts the connection task
   3. Disconnecting the camera's ethernet and reconnecting results in automatic recovery with no zombie sockets
   4. Protocol state transitions are logged and state is queryable via coordinator data
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md -- ConnectionState enum, backoff constants, and test scaffold
+- [ ] 01-02-PLAN.md -- pppp_client.py state machine, watchdog, reconnect, socket lifecycle
+- [ ] 01-03-PLAN.md -- Coordinator state-aware reconnection gating
 
 ### Phase 2: CGI Command Expansion
 **Goal**: Every camera setting available in the MTCam HD app is readable and writable from HA
@@ -97,7 +102,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Connection Reliability | 0/0 | Not started | - |
+| 1. Connection Reliability | 0/3 | Planned | - |
 | 2. CGI Command Expansion | 0/0 | Not started | - |
 | 3. Event & Sensor Entities | 0/0 | Not started | - |
 | 4. SD Card Features | 0/0 | Not started | - |
