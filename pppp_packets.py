@@ -719,6 +719,9 @@ CGI_SET_IRCUT = "set_ircut.cgi"
 CGI_SET_DEVNAME = "set_devname.cgi"
 CGI_SET_MOBILETIME = "set_mobiletime.cgi"
 CGI_START_RECORDING = "set_record_param.cgi"
+CGI_WIFI_SCAN = "wifi_scan.cgi"
+CGI_GET_DDNS = "get_ddns_params.cgi"
+CGI_SET_DDNS = "set_ddns.cgi"
 
 # IR night vision mode map
 IR_MODE_MAP = {

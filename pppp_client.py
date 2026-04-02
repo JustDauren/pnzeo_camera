@@ -40,6 +40,8 @@ from .pppp_packets import (
     CGI_PARAM_POWER_FREQ,
     CGI_GET_IRCUT, CGI_SET_IRCUT, CGI_SET_DEVNAME,
     CGI_SET_DATETIME, CGI_START_RECORDING,
+    CGI_WIFI_SCAN, CGI_GET_DDNS, CGI_SET_DDNS,
+    CGI_GET_WIFI, CGI_SET_WIFI, CGI_GET_NETWORK, CGI_GET_USER,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -690,6 +692,153 @@ class PNZEOClient:
         cgi = build_cgi_url(CGI_START_RECORDING, self.username, self.password,
                             rec_mode=1, rec_channel=1)
         return bool((r := await self._send_cgi(cgi)) and r.get("success"))
+
+    # =====================================================================
+    # WiFi, network, and user management
+    # =====================================================================
+
+    _SECURITY_MAP = {0: "None", 1: "WEP", 2: "WPA", 3: "WPA2"}
+
+    async def wifi_scan(self) -> list[dict]:
+        """Scan for available WiFi networks from camera.
+
+        Response format: key=value pairs like
+          ap_ssid[0]=NetworkName&ap_signal[0]=80&ap_security[0]=3
+        Returns list of dicts: [{"ssid": "...", "signal": 80, "security": "WPA2"}, ...]
+        """
+        cgi = build_cgi_url(CGI_WIFI_SCAN, self.username, self.password)
+        resp = await self._send_cgi(cgi)
+        if not resp or not resp.get("success"):
+            return []
+
+        networks: list[dict] = []
+        # Collect indexed AP fields from response
+        ssids: dict[int, str] = {}
+        signals: dict[int, int] = {}
+        securities: dict[int, int] = {}
+        for key, val in resp.items():
+            if key.startswith("ap_ssid["):
+                try:
+                    idx = int(key.split("[")[1].rstrip("]"))
+                    ssids[idx] = str(val)
+                except (ValueError, IndexError):
+                    pass
+            elif key.startswith("ap_signal["):
+                try:
+                    idx = int(key.split("[")[1].rstrip("]"))
+                    signals[idx] = int(val)
+                except (ValueError, IndexError):
+                    pass
+            elif key.startswith("ap_security["):
+                try:
+                    idx = int(key.split("[")[1].rstrip("]"))
+                    securities[idx] = int(val)
+                except (ValueError, IndexError):
+                    pass
+
+        for idx in sorted(ssids.keys()):
+            sec_num = securities.get(idx, 0)
+            networks.append({
+                "ssid": ssids[idx],
+                "signal": signals.get(idx, 0),
+                "security": self._SECURITY_MAP.get(sec_num, f"Unknown({sec_num})"),
+            })
+        return networks
+
+    async def set_wifi(self, ssid: str, password: str, security: int = 3) -> bool:
+        """Connect camera to a WiFi network.
+
+        security: 0=none, 1=WEP, 2=WPA, 3=WPA2
+        """
+        cgi = build_cgi_url(CGI_SET_WIFI, self.username, self.password,
+                            ssid=ssid, pwd=password, mode=security, enable=1)
+        return bool((r := await self._send_cgi(cgi)) and r.get("success"))
+
+    async def get_wifi_params(self) -> dict[str, Any]:
+        """Get current WiFi connection parameters (SSID, signal, mode).
+
+        Stores results in _camera_params under 'wifi_*' namespace.
+        """
+        cgi = build_cgi_url(CGI_GET_WIFI, self.username, self.password)
+        resp = await self._send_cgi(cgi)
+        if resp and resp.get("success"):
+            wifi = {k: v for k, v in resp.items()
+                    if k.startswith("wifi_") or k in ("ssid", "signal", "mode", "enable")}
+            self._camera_params.update(wifi)
+            return wifi
+        return {}
+
+    async def get_network_params(self) -> dict[str, Any]:
+        """Get LAN network settings (IP, mask, gateway, DNS).
+
+        Stores results in _camera_params under 'net_*' namespace.
+        """
+        cgi = build_cgi_url(CGI_GET_NETWORK, self.username, self.password)
+        resp = await self._send_cgi(cgi)
+        if resp and resp.get("success"):
+            network = {k: v for k, v in resp.items()
+                       if k.startswith("net_") or k in (
+                           "ip", "mask", "gateway", "dns", "dhcp")}
+            self._camera_params.update(network)
+            return network
+        return {}
+
+    async def get_ddns_params(self) -> dict[str, Any]:
+        """Get DDNS settings from camera."""
+        cgi = build_cgi_url(CGI_GET_DDNS, self.username, self.password)
+        resp = await self._send_cgi(cgi)
+        if resp and resp.get("success"):
+            ddns = {k: v for k, v in resp.items()
+                    if k.startswith("ddns_") or k in (
+                        "ddns_service", "ddns_host", "ddns_user", "ddns_port")}
+            return ddns
+        return {}
+
+    async def set_ddns(self, service: str, hostname: str, user: str,
+                       password: str, port: int = 80) -> bool:
+        """Configure DDNS settings on camera."""
+        cgi = build_cgi_url(CGI_SET_DDNS, self.username, self.password,
+                            ddns_service=service, ddns_host=hostname,
+                            ddns_user=user, ddns_pwd=password, ddns_port=port)
+        return bool((r := await self._send_cgi(cgi)) and r.get("success"))
+
+    async def get_users(self) -> list[dict]:
+        """Get camera user accounts (up to 3 slots).
+
+        Response format: user1=admin&pwd1=8888&user2=&pwd2=&user3=&pwd3=
+        Returns list of dicts with slot and username (passwords NOT returned for security).
+        """
+        cgi = build_cgi_url(CGI_GET_USER, self.username, self.password)
+        resp = await self._send_cgi(cgi)
+        if not resp or not resp.get("success"):
+            return []
+
+        users: list[dict] = []
+        for slot in range(1, 4):
+            username = resp.get(f"user{slot}", "")
+            if username:
+                users.append({"slot": slot, "username": str(username)})
+        return users
+
+    async def set_users(self, user1: str = "", pwd1: str = "",
+                        user2: str = "", pwd2: str = "",
+                        user3: str = "", pwd3: str = "") -> bool:
+        """Set camera user accounts (all 3 slots).
+
+        WARNING: This overwrites ALL 3 user slots. Always GET first.
+        If primary user (slot 1) password changes, updates self.password.
+        """
+        cgi = build_cgi_url(CGI_SET_USER, self.username, self.password,
+                            user1=user1, pwd1=pwd1,
+                            user2=user2, pwd2=pwd2,
+                            user3=user3, pwd3=pwd3)
+        resp = await self._send_cgi(cgi)
+        if resp and resp.get("success"):
+            # Update stored password if primary user password changed
+            if user1 == self.username and pwd1:
+                self.password = pwd1
+            return True
+        return False
 
     async def ptz_control(self, direction: int, step: int = 1) -> bool:
         cgi = build_cgi_url("decoder_control.cgi", self.username, self.password,
