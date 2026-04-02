@@ -132,11 +132,11 @@ class PNZEOClient:
                 await self._cleanup()
                 return False
 
-            _LOGGER.debug("Camera port: %d", self._cam_port)
+            _LOGGER.info(
+                "PPPP: discovered port %d for %s, punching...",
+                self._cam_port, self.host,
+            )
             target = (self.host, self._cam_port)
-
-            # Small settle delay — camera may still be releasing previous session
-            await asyncio.sleep(0.5)
 
             # Step 2: F141 PUNCH → P2P handshake (same socket!)
             uid = encode_uid(self.device_id)
@@ -148,10 +148,11 @@ class PNZEOClient:
             # Send punches interleaved with keepalive
             for i in range(PUNCH_COUNT):
                 self._transport.sendto(punch, target)
-                if i % 3 == 2:  # keepalive every 3rd punch
+                if i % 3 == 2:
                     self._transport.sendto(build_alive(), target)
                 await asyncio.sleep(PUNCH_INTERVAL)
                 if self._protocol.got_p2p_rdy:
+                    _LOGGER.info("PPPP: P2P handshake OK after %d punches", i + 1)
                     break
 
             # Wait more if not yet ready
@@ -379,6 +380,12 @@ class _PNZEOProtocol(asyncio.DatagramProtocol):
             return
 
         pkt_type = data[1]
+        # Log all non-keepalive packets for debugging
+        if pkt_type not in (PktType.ALIVE, PktType.ALIVE_ACK):
+            _LOGGER.debug(
+                "PPPP RX: F1%02X from %s:%d (%dB)",
+                pkt_type, addr[0], addr[1], len(data),
+            )
 
         # LAN Search response (F141 PUNCH_PKT) — extract P2P port
         if pkt_type == PktType.PUNCH_PKT and addr[0] == self.client.host:
