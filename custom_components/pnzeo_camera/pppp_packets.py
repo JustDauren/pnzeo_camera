@@ -9,9 +9,11 @@ Also implements DH (DaHua-derived) LAN discovery on port 8600.
 """
 from __future__ import annotations
 
+import json
 import logging
 import struct
 from enum import IntEnum
+from urllib.parse import quote
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -640,13 +642,13 @@ def build_cgi_url(endpoint: str, username: str, password: str, **params) -> str:
     """Build a CGI URL string for camera commands.
 
     All commands require loginuse/loginpas authentication.
-    Example: GET /camera_control.cgi?param=14&value=1&loginuse=admin&loginpas=XXX&
+    All values are URL-encoded to prevent CGI injection.
     """
-    parts = [f"GET /{endpoint}?"]
+    parts = [f"GET /{quote(endpoint, safe='')}?"]
     for key, val in params.items():
-        parts.append(f"{key}={val}&")
-    parts.append(f"loginuse={username}&loginpas={password}&")
-    parts.append(f"user={username}&pwd={password}&")
+        parts.append(f"{quote(str(key), safe='')}={quote(str(val), safe='')}&")
+    parts.append(f"loginuse={quote(username, safe='')}&loginpas={quote(password, safe='')}&")
+    parts.append(f"user={quote(username, safe='')}&pwd={quote(password, safe='')}&")
     return "".join(parts)
 
 
@@ -678,7 +680,6 @@ def parse_drw_cgi_response(data: bytes) -> dict | None:
             except ValueError:
                 pass
         elif line.startswith("jsonvalue="):
-            import json
             try:
                 result["json"] = json.loads(line[len("jsonvalue="):])
             except Exception:

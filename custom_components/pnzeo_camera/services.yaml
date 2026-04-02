@@ -1,0 +1,76 @@
+ptz_control:
+  name: PTZ Control
+  description: Control camera pan/tilt/zoom
+  fields:
+    direction:
+      name: Direction
+      description: Movement direction
+      required: true
+      selector:
+        select:
+          options:
+            - up
+            - down
+            - left
+            - right
+            - center
+            - zoom_in
+            - zoom_out
+    step:
+      name: Step mode
+      description: 0 = continuous, 1 = one step
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 1
+
+goto_preset:
+  name: Go to Preset
+  description: Move camera to a saved preset position
+  fields:
+    preset:
+      name: Preset number
+      description: Preset position (0-15)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 15
+
+set_preset:
+  name: Save Preset
+  description: Save current camera position as preset
+  fields:
+    preset:
+      name: Preset number
+      description: Preset slot to save to (0-15)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 15
+
+send_command:
+  name: Send Command
+  description: Send camera control command (advanced)
+  fields:
+    msg_type:
+      name: Command type
+      description: Camera control command ID (0-255)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 255
+
+change_password:
+  name: Change Camera Password
+  description: Change the camera login password
+  fields:
+    new_password:
+      name: New password
+      description: New password for the camera
+      required: true
+      selector:
+        text:

@@ -21,12 +21,12 @@
         }
       },
       "credentials": {
-        "title": "Пароль камеры",
-        "description": "Введите пароль камеры (по умолчанию 8888)",
+        "title": "Camera Password",
+        "description": "Enter the camera password (factory default: 8888). We strongly recommend changing it after setup.",
         "data": {
-          "password": "Пароль",
+          "password": "Password",
           "device_id": "Device ID",
-          "rtsp_port": "RTSP порт"
+          "rtsp_port": "RTSP port"
         }
       }
     },

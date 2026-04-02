@@ -1,6 +1,9 @@
 """Camera entity for PNZEO — RTSP stream via HA stream component."""
 from __future__ import annotations
 
+import asyncio
+import logging
+
 from homeassistant.components.camera import Camera, CameraEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -9,6 +12,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import PNZEOCoordinator
 from .entity import PNZEOEntity
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -19,11 +24,10 @@ async def async_setup_entry(
 
 
 class PNZEOCamera(PNZEOEntity, Camera):
-    """PNZEO camera with RTSP stream and PTZ support."""
+    """PNZEO camera with RTSP stream."""
 
     _attr_supported_features = CameraEntityFeature.STREAM
     _attr_brand = "PNZEO"
-    _attr_model = "W8"
 
     def __init__(self, coordinator: PNZEOCoordinator) -> None:
         PNZEOEntity.__init__(self, coordinator, "camera", "Camera")
@@ -32,25 +36,24 @@ class PNZEOCamera(PNZEOEntity, Camera):
         self._attr_is_on = True
 
     async def stream_source(self) -> str | None:
-        """Return RTSP stream URL for HA stream component (WebRTC)."""
+        """Return RTSP stream URL for HA stream component."""
         return self.coordinator.device.rtsp_url
 
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
-        """Return a snapshot from the camera via ffmpeg."""
-        import subprocess
+        """Return a snapshot from the camera via ffmpeg (non-blocking)."""
         try:
-            result = subprocess.run(
-                [
-                    "ffmpeg", "-y", "-rtsp_transport", "tcp",
-                    "-i", self.coordinator.device.rtsp_url,
-                    "-frames:v", "1", "-f", "image2", "-q:v", "3", "pipe:1",
-                ],
-                capture_output=True, timeout=10,
+            proc = await asyncio.create_subprocess_exec(
+                "ffmpeg", "-y", "-rtsp_transport", "tcp",
+                "-i", self.coordinator.device.rtsp_url,
+                "-frames:v", "1", "-f", "image2", "-q:v", "3", "pipe:1",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
             )
-            if result.returncode == 0 and len(result.stdout) > 1000:
-                return result.stdout
-        except Exception:
-            pass
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=10)
+            if proc.returncode == 0 and len(stdout) > 1000:
+                return stdout
+        except (asyncio.TimeoutError, OSError) as ex:
+            _LOGGER.debug("Snapshot failed: %s", ex)
         return None

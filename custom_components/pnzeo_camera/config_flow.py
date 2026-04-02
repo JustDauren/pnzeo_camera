@@ -142,7 +142,7 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="credentials",
             data_schema=vol.Schema({
-                vol.Required(CONF_PASSWORD, default=DEFAULT_PASSWORD): str,
+                vol.Required(CONF_PASSWORD): str,
                 vol.Optional(CONF_DEVICE_ID, default=device_id): str,
                 vol.Optional(CONF_RTSP_PORT, default=DEFAULT_RTSP_PORT): int,
             }),

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import select as _select
 import socket
 import struct
 from typing import Any
@@ -165,7 +166,7 @@ class PNZEOClient:
 
         for server_host, server_port in CLOUD_P2P_SERVERS:
             try:
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.setblocking(False)
                 sock.settimeout(0)
@@ -217,7 +218,7 @@ class PNZEOClient:
 
     async def _udp_recv(self, sock: socket.socket, timeout: float) -> bytes | None:
         """Async receive on a raw UDP socket."""
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         try:
             return await asyncio.wait_for(
                 loop.run_in_executor(None, lambda: self._blocking_recv(sock, timeout)),
@@ -229,8 +230,7 @@ class PNZEOClient:
     @staticmethod
     def _blocking_recv(sock: socket.socket, timeout: float) -> bytes | None:
         """Blocking receive with timeout."""
-        import select
-        ready, _, _ = select.select([sock], [], [], timeout)
+        ready, _, _ = _select.select([sock], [], [], timeout)
         if ready:
             data, _ = sock.recvfrom(4096)
             return data
@@ -243,7 +243,7 @@ class PNZEOClient:
     async def _p2p_punch(self) -> bool:
         """Establish P2P session via F141 punch on LAN."""
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             self._protocol = _PNZEOProtocol(self)
 
             self._transport, _ = await asyncio.wait_for(

@@ -6,7 +6,6 @@ Cloud is used ONLY for port discovery (one UDP query), all data stays on LAN.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
@@ -109,9 +108,11 @@ def _register_services(hass: HomeAssistant) -> None:
 
     async def handle_send_command(call: ServiceCall) -> None:
         msg_type = call.data["msg_type"]
+        if not 0 <= msg_type <= 255:
+            return
         for coordinator in hass.data[DOMAIN].values():
             if isinstance(coordinator, PNZEOCoordinator):
-                await coordinator.device.client.send_command(msg_type)
+                await coordinator.device.client.camera_control(msg_type, 0)
                 break
 
     async def handle_change_password(call: ServiceCall) -> None:

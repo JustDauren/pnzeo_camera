@@ -21,12 +21,12 @@
         }
       },
       "credentials": {
-        "title": "Camera Credentials",
+        "title": "Camera Password",
+        "description": "Enter the camera password (factory default: 8888). We strongly recommend changing it after setup.",
         "data": {
-          "username": "Username",
           "password": "Password",
-          "device_id": "Device ID (optional)",
-          "rtsp_port": "RTSP Port"
+          "device_id": "Device ID",
+          "rtsp_port": "RTSP port"
         }
       }
     },
@@ -35,7 +35,19 @@
       "already_configured": "This camera is already configured"
     },
     "error": {
-      "cannot_connect": "Cannot connect to camera. Check IP and port."
+      "cannot_connect": "Cannot connect to camera. Check IP and port.",
+      "invalid_auth": "Wrong password. Check credentials.",
+      "password_change_failed": "Failed to change password on camera."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Camera Settings",
+        "data": {
+          "new_password": "New password"
+        }
+      }
     }
   }
 }
