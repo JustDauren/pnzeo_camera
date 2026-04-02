@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-04-02T15:04:05.759Z"
+status: executing
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-04-02T15:43:00.769Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 7
+  completed_plans: 4
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** Full camera control from HA -- install via HACS, enter password, everything works autonomously on Pi5
-**Current focus:** Phase 01 — connection-reliability
+**Current focus:** Phase 02 — cgi-command-expansion
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 02 (cgi-command-expansion) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-04-02
 
 Progress: [..........] 0%
@@ -55,6 +55,7 @@ Progress: [..........] 0%
 | Phase 01 P01 | 14min | 2 tasks | 6 files |
 | Phase 01 P02 | 5min | 2 tasks | 3 files |
 | Phase 01 P03 | 5min | 2 tasks | 2 files |
+| Phase 02 P01 | 4min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,9 @@ Recent decisions affecting current work:
 - [Phase 01]: Watchdog triggers reconnect after 3 consecutive keepalive failures, not on first failure
 - [Phase 01]: Coordinator uses ConnectionState enum gating instead of client.connected boolean -- eliminates reconnect storms during watchdog-driven reconnection
 - [Phase 01]: Test approach: types.SimpleNamespace with bound methods for HA-free coordinator testing (Python 3.12 MagicMock blocks __init__ patching)
+- [Phase 02]: GET-before-SET for all alarm params -- always fetch current 33/11 values, merge changes, send full set (per Pitfall 11)
+- [Phase 02]: New alarm switches disabled by default (entity_registry_enabled_default=False) since not all cameras support them
+- [Phase 02]: Motion switch upgraded from internal boolean to coordinator-data-driven state for real camera state accuracy
 
 ### Pending Todos
 
@@ -86,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T14:57:57.242Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-04-02T15:43:00.766Z
+Stopped at: Completed 02-01-PLAN.md
 Resume file: None

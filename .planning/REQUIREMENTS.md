@@ -22,15 +22,15 @@
 
 ### Alarm & Motion Detection
 
-- [ ] **ALRM-01**: Motion detection on/off switch
-- [ ] **ALRM-02**: Motion detection sensitivity setting (number entity, 1-10)
-- [ ] **ALRM-03**: Full alarm settings via CGI (alarm schedule, zones)
-- [ ] **ALRM-04**: Extended alarm settings (RTAlarmEXSetting -- 11 params)
+- [x] **ALRM-01**: Motion detection on/off switch
+- [x] **ALRM-02**: Motion detection sensitivity setting (number entity, 1-10)
+- [x] **ALRM-03**: Full alarm settings via CGI (alarm schedule, zones)
+- [x] **ALRM-04**: Extended alarm settings (RTAlarmEXSetting -- 11 params)
 - [ ] **ALRM-05**: Motion detection binary_sensor (polling-based state)
 - [ ] **ALRM-06**: Alarm event entity (HA EventEntity for motion/GPIO/sound events)
-- [ ] **ALRM-07**: Sound detection alarm settings
-- [ ] **ALRM-08**: GPIO alarm settings
-- [ ] **ALRM-09**: Alarm log retrieval
+- [x] **ALRM-07**: Sound detection alarm settings
+- [x] **ALRM-08**: GPIO alarm settings
+- [x] **ALRM-09**: Alarm log retrieval
 
 ### SD Card Management
 
@@ -133,15 +133,15 @@
 | CONF-02 | Phase 6 | Pending |
 | CONF-03 | Phase 6 | Pending |
 | CONF-04 | Phase 6 | Pending |
-| ALRM-01 | Phase 2 | Pending |
-| ALRM-02 | Phase 2 | Pending |
-| ALRM-03 | Phase 2 | Pending |
-| ALRM-04 | Phase 2 | Pending |
+| ALRM-01 | Phase 2 | Complete |
+| ALRM-02 | Phase 2 | Complete |
+| ALRM-03 | Phase 2 | Complete |
+| ALRM-04 | Phase 2 | Complete |
 | ALRM-05 | Phase 3 | Pending |
 | ALRM-06 | Phase 3 | Pending |
-| ALRM-07 | Phase 2 | Pending |
-| ALRM-08 | Phase 2 | Pending |
-| ALRM-09 | Phase 2 | Pending |
+| ALRM-07 | Phase 2 | Complete |
+| ALRM-08 | Phase 2 | Complete |
+| ALRM-09 | Phase 2 | Complete |
 | SDCD-01 | Phase 3 | Pending |
 | SDCD-02 | Phase 4 | Pending |
 | SDCD-03 | Phase 4 | Pending |
