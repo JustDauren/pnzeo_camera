@@ -434,3 +434,77 @@ def _register_services(hass: HomeAssistant) -> None:
         DOMAIN, "get_email_settings", handle_get_email_settings,
         schema=vol.Schema({}),
     )
+
+    # Audio services (05-02)
+
+    async def handle_listen_audio(call: ServiceCall) -> None:
+        """Start listening to camera audio (DRW channel 2)."""
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                client = coordinator.device.client
+                success = await client.start_audio_stream()
+                if success:
+                    _LOGGER.info("Audio listening started")
+                    hass.bus.async_fire(
+                        f"{DOMAIN}_audio_started",
+                        {"format": client._audio_format or {"codec": "alaw", "sample_rate": 8000}},
+                    )
+                else:
+                    _LOGGER.warning("Failed to start audio stream")
+                break
+
+    hass.services.async_register(
+        DOMAIN, "listen_audio", handle_listen_audio,
+        schema=vol.Schema({}),
+    )
+
+    async def handle_stop_audio(call: ServiceCall) -> None:
+        """Stop listening to camera audio."""
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                await coordinator.device.client.stop_audio_stream()
+                hass.bus.async_fire(f"{DOMAIN}_audio_stopped", {})
+                break
+
+    hass.services.async_register(
+        DOMAIN, "stop_audio", handle_stop_audio,
+        schema=vol.Schema({}),
+    )
+
+    async def handle_talk(call: ServiceCall) -> None:
+        """Send audio data to camera speaker (DRW channel 3).
+
+        Accepts base64-encoded 16-bit signed LE PCM data at 8000Hz mono.
+        Encodes to A-law and sends via DRW CH_TALK.
+        """
+        import base64
+        from .audio_codec import alaw_encode
+
+        pcm_b64 = call.data["audio_data"]
+        try:
+            pcm_data = base64.b64decode(pcm_b64)
+        except Exception as ex:
+            _LOGGER.error("Invalid base64 audio data: %s", ex)
+            return
+
+        if len(pcm_data) % 2 != 0:
+            _LOGGER.error("PCM data must be 16-bit (even number of bytes), got %d", len(pcm_data))
+            return
+
+        alaw_data = alaw_encode(pcm_data)
+
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                success = await coordinator.device.client.send_talk_data(alaw_data)
+                if success:
+                    _LOGGER.info("Sent %d bytes of talk audio", len(alaw_data))
+                else:
+                    _LOGGER.warning("Failed to send talk audio")
+                break
+
+    hass.services.async_register(
+        DOMAIN, "talk", handle_talk,
+        schema=vol.Schema({
+            vol.Required("audio_data"): str,
+        }),
+    )

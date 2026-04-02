@@ -286,6 +286,24 @@
       "name": "Get Email Settings",
       "description": "Retrieve current email notification configuration from camera (fires pnzeo_camera_email_settings event)"
     },
+    "listen_audio": {
+      "name": "Listen Audio",
+      "description": "Start listening to camera audio stream (DRW channel 2, G.711 A-law)"
+    },
+    "stop_audio": {
+      "name": "Stop Audio",
+      "description": "Stop listening to camera audio stream"
+    },
+    "talk": {
+      "name": "Talk",
+      "description": "Send audio data to camera speaker (DRW channel 3). Provide base64-encoded 16-bit signed LE PCM at 8000Hz mono.",
+      "fields": {
+        "audio_data": {
+          "name": "Audio Data",
+          "description": "Base64-encoded 16-bit signed little-endian PCM audio at 8000Hz mono"
+        }
+      }
+    },
     "set_recording_schedule": {
       "name": "Set Recording Schedule",
       "description": "Configure SD card recording schedule (25 params for weekly schedule)",

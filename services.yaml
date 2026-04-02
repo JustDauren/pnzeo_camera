@@ -514,3 +514,23 @@ set_recording_schedule:
         number:
           min: 0
           max: 1
+
+listen_audio:
+  name: Listen Audio
+  description: Start listening to camera audio stream (DRW channel 2, G.711 A-law)
+
+stop_audio:
+  name: Stop Audio
+  description: Stop listening to camera audio stream
+
+talk:
+  name: Talk
+  description: Send audio data to camera speaker (DRW channel 3). Provide base64-encoded 16-bit signed LE PCM at 8000Hz mono.
+  fields:
+    audio_data:
+      name: Audio Data
+      description: Base64-encoded 16-bit signed little-endian PCM audio at 8000Hz mono
+      required: true
+      selector:
+        text:
+          multiline: true
