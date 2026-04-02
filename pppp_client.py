@@ -14,10 +14,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import socket
 import struct
+import time
 from typing import Any
 
+from .const import (
+    ConnectionState,
+    BACKOFF_BASE, BACKOFF_MAX_LAN, BACKOFF_MAX_CLOUD, MAX_RECONNECT_ATTEMPTS,
+)
 from .pppp_packets import (
     PktType,
     build_alive, build_alive_ack, build_close,
@@ -57,9 +63,10 @@ class PNZEOClient:
         self.device_id = device_id
         self._transport: asyncio.DatagramTransport | None = None
         self._protocol: _PNZEOProtocol | None = None
-        self._connected = False
-        self._authenticated = False
+        self._state: ConnectionState = ConnectionState.DISCONNECTED
         self._keepalive_task: asyncio.Task | None = None
+        self._watchdog_task: asyncio.Task | None = None
+        self._last_keepalive_sent: float = 0.0
         self._cam_port: int = 0
         self._cmd_seq = 0
         self._connection_method = "none"
@@ -70,7 +77,12 @@ class PNZEOClient:
 
     @property
     def connected(self) -> bool:
-        return self._connected and self._authenticated
+        return self._state == ConnectionState.CONNECTED
+
+    @property
+    def connection_state(self) -> ConnectionState:
+        """Current connection state enum value."""
+        return self._state
 
     @property
     def state(self) -> dict[str, Any]:
@@ -83,6 +95,17 @@ class PNZEOClient:
     @property
     def capabilities(self) -> dict:
         return self._capabilities
+
+    def _set_state(self, new_state: ConnectionState) -> None:
+        """Transition connection state with logging."""
+        old_state = self._state
+        if old_state == new_state:
+            return
+        self._state = new_state
+        _LOGGER.info(
+            "Connection state: %s -> %s (%s)",
+            old_state.name, new_state.name, self.host,
+        )
 
     # =====================================================================
     # Connection
@@ -99,11 +122,12 @@ class PNZEOClient:
         return False
 
     async def _do_connect(self) -> bool:
-        """Single connection attempt."""
+        """Single connection attempt with guaranteed cleanup on failure."""
+        self._set_state(ConnectionState.CONNECTING)
+        transport = None
         try:
-            await self._cleanup()
+            await self._cleanup_transport()
 
-            # Step 1: Get DRW port from cloud (1 UDP query)
             drw_port = await self._cloud_discover_port()
             if not drw_port:
                 _LOGGER.debug("Cloud port discovery failed, trying LAN only")
@@ -115,16 +139,16 @@ class PNZEOClient:
 
             self._cam_port = drw_port
 
-            # Step 2: Create socket and do P2P punch
             loop = asyncio.get_running_loop()
             self._protocol = _PNZEOProtocol(self)
-            self._transport, _ = await asyncio.wait_for(
+            transport, _ = await asyncio.wait_for(
                 loop.create_datagram_endpoint(
                     lambda: self._protocol,
                     local_addr=("0.0.0.0", 0),
                 ),
                 timeout=5,
             )
+            self._transport = transport
 
             target = (self.host, self._cam_port)
             uid = encode_uid(self.device_id)
@@ -147,10 +171,8 @@ class PNZEOClient:
 
             if not self._protocol.got_p2p_rdy:
                 _LOGGER.warning("P2P handshake failed with %s:%d", self.host, self._cam_port)
-                await self._cleanup()
                 return False
 
-            self._connected = True
             _LOGGER.debug("P2P handshake OK with %s:%d", self.host, self._cam_port)
 
             # Keepalive burst before CGI
@@ -158,24 +180,43 @@ class PNZEOClient:
                 self._transport.sendto(build_alive(), target)
                 await asyncio.sleep(0.15)
 
-            # Step 3: CGI login
+            # CGI login
+            self._set_state(ConnectionState.AUTHENTICATING)
             if not await self._cgi_login():
                 _LOGGER.warning("CGI login failed on %s:%d", self.host, self._cam_port)
-                await self._cleanup()
                 return False
 
-            self._authenticated = True
             self._connection_method = "lan"
+            self._set_state(ConnectionState.CONNECTED)
+            self._last_keepalive_sent = time.monotonic()
             self._keepalive_task = asyncio.create_task(self._keepalive_loop())
+            self._watchdog_task = asyncio.create_task(self._connection_watchdog())
             _LOGGER.info("Connected to camera %s (port %d)", self.host, self._cam_port)
             return True
 
         except Exception as ex:
             _LOGGER.debug("Connection failed: %s", ex)
-            await self._cleanup()
             return False
+        finally:
+            if self._state != ConnectionState.CONNECTED:
+                if transport and not transport.is_closing():
+                    transport.close()
+                if self._transport is transport:
+                    self._transport = None
+                self._protocol = None
+                if self._state in (ConnectionState.CONNECTING, ConnectionState.AUTHENTICATING):
+                    self._set_state(ConnectionState.DISCONNECTED)
 
     async def disconnect(self) -> None:
+        """Disconnect and clean up all tasks."""
+        if self._watchdog_task:
+            self._watchdog_task.cancel()
+            try:
+                await self._watchdog_task
+            except asyncio.CancelledError:
+                pass
+            self._watchdog_task = None
+
         if self._keepalive_task:
             self._keepalive_task.cancel()
             try:
@@ -183,24 +224,94 @@ class PNZEOClient:
             except asyncio.CancelledError:
                 pass
             self._keepalive_task = None
+
         if self._transport and self._cam_port:
             try:
                 self._transport.sendto(build_close(), (self.host, self._cam_port))
             except Exception:
                 pass
-        await self._cleanup()
 
-    async def _cleanup(self) -> None:
+        await self._cleanup_transport()
+        self._set_state(ConnectionState.DISCONNECTED)
+
+    async def _cleanup_transport(self) -> None:
+        """Clean up transport and protocol. Does NOT change connection state."""
         if self._transport:
             try:
-                self._transport.close()
+                if not self._transport.is_closing():
+                    self._transport.close()
             except Exception:
                 pass
             self._transport = None
         self._protocol = None
-        self._connected = False
-        self._authenticated = False
         self._connection_method = "none"
+
+    # =====================================================================
+    # Reconnection and Watchdog
+    # =====================================================================
+
+    async def _reconnect_with_backoff(self) -> bool:
+        """Reconnect with exponential backoff + full jitter."""
+        self._set_state(ConnectionState.RECONNECTING)
+        max_delay = (
+            BACKOFF_MAX_CLOUD
+            if self._connection_method == "cloud"
+            else BACKOFF_MAX_LAN
+        )
+
+        for attempt in range(MAX_RECONNECT_ATTEMPTS):
+            delay = min(BACKOFF_BASE * (2 ** attempt), max_delay)
+            jitter = random.uniform(0, delay)
+            _LOGGER.info(
+                "Reconnect attempt %d/%d in %.1fs (%s)",
+                attempt + 1, MAX_RECONNECT_ATTEMPTS, jitter, self.host,
+            )
+            await asyncio.sleep(jitter)
+            await self._cleanup_transport()
+            if await self._do_connect():
+                return True
+
+        self._set_state(ConnectionState.FAILED)
+        _LOGGER.error(
+            "Failed to reconnect after %d attempts (%s). "
+            "Will retry on next coordinator cycle.",
+            MAX_RECONNECT_ATTEMPTS, self.host,
+        )
+        return False
+
+    async def _connection_watchdog(self) -> None:
+        """Monitor connection health. Restart keepalive or trigger reconnect."""
+        consecutive_failures = 0
+        while self._state in (ConnectionState.CONNECTED, ConnectionState.RECONNECTING):
+            try:
+                if self._state == ConnectionState.CONNECTED:
+                    if not self._keepalive_task or self._keepalive_task.done():
+                        _LOGGER.warning(
+                            "Keepalive task died at %s (%s). Restarting.",
+                            time.strftime("%H:%M:%S"), self.host,
+                        )
+                        consecutive_failures += 1
+                        if consecutive_failures >= 3:
+                            _LOGGER.warning(
+                                "3 keepalive failures (%s). Triggering reconnect.",
+                                self.host,
+                            )
+                            await self._reconnect_with_backoff()
+                            consecutive_failures = 0
+                        elif self._state == ConnectionState.CONNECTED:
+                            self._keepalive_task = asyncio.create_task(
+                                self._keepalive_loop()
+                            )
+                    else:
+                        consecutive_failures = 0
+
+                await asyncio.sleep(KEEPALIVE_INTERVAL * 2)
+
+            except asyncio.CancelledError:
+                break
+            except Exception as ex:
+                _LOGGER.warning("Watchdog error (%s): %s", self.host, ex)
+                await asyncio.sleep(KEEPALIVE_INTERVAL)
 
     # =====================================================================
     # Port Discovery
@@ -280,7 +391,9 @@ class PNZEOClient:
         return bool(resp and resp.get("success"))
 
     async def _send_cgi(self, cgi_url: str) -> dict | None:
-        if not self._connected or not self._transport:
+        if self._state not in (ConnectionState.CONNECTED, ConnectionState.AUTHENTICATING):
+            return None
+        if not self._transport or self._transport.is_closing():
             return None
         self._cmd_seq = (self._cmd_seq + 1) % 256
         drw = build_drw_cgi(self._cmd_seq, cgi_url)
@@ -388,15 +501,37 @@ class PNZEOClient:
     # =====================================================================
 
     async def _keepalive_loop(self) -> None:
-        while self._connected:
+        """Send keepalive packets. Track failures for watchdog."""
+        self._last_keepalive_sent = time.monotonic()
+        while self._state == ConnectionState.CONNECTED:
             try:
-                if self._transport and self._cam_port:
-                    self._transport.sendto(build_alive(), (self.host, self._cam_port))
+                if self._transport and not self._transport.is_closing():
+                    self._transport.sendto(
+                        build_alive(), (self.host, self._cam_port)
+                    )
+                    self._last_keepalive_sent = time.monotonic()
+                else:
+                    _LOGGER.warning(
+                        "Keepalive: transport closed at %s (%s)",
+                        time.strftime("%H:%M:%S"), self.host,
+                    )
+                    break
                 await asyncio.sleep(KEEPALIVE_INTERVAL)
             except asyncio.CancelledError:
+                _LOGGER.debug("Keepalive cancelled (%s)", self.host)
+                raise
+            except OSError as ex:
+                _LOGGER.warning(
+                    "Keepalive send failed at %s (%s): %s",
+                    time.strftime("%H:%M:%S"), self.host, ex,
+                )
                 break
-            except Exception:
-                pass
+            except Exception as ex:
+                _LOGGER.warning(
+                    "Keepalive unexpected error at %s (%s): %s",
+                    time.strftime("%H:%M:%S"), self.host, ex,
+                )
+                break
 
     def _handle_drw_response(self, data: bytes) -> None:
         self._drw_data = data
@@ -435,10 +570,12 @@ class _PNZEOProtocol(asyncio.DatagramProtocol):
                     pass
 
         elif pkt_type == PktType.CLOSE:
-            self.client._connected = False
+            if self.client._state == ConnectionState.CONNECTED:
+                self.client._set_state(ConnectionState.DISCONNECTED)
 
     def error_received(self, exc: Exception) -> None:
         _LOGGER.debug("UDP error: %s", exc)
 
     def connection_lost(self, exc: Exception | None) -> None:
-        self.client._connected = False
+        if self.client._state == ConnectionState.CONNECTED:
+            self.client._set_state(ConnectionState.DISCONNECTED)
