@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-04-02T16:34:28.068Z"
+status: verifying
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-04-02T16:40:46.345Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 
 Phase: 04 (sd-card-features) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-02
 
 Progress: [..........] 0%
@@ -62,6 +62,7 @@ Progress: [..........] 0%
 | Phase 03 P02 | 1min | 2 tasks | 1 files |
 | Phase 03 P01 | 2min | 2 tasks | 4 files |
 | Phase 04 P01 | 4min | 2 tasks | 8 files |
+| Phase 04 P02 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,8 @@ Recent decisions affecting current work:
 - [Phase 04]: Recording mode polling runs every coordinator cycle (not throttled like WiFi) since mode changes frequently
 - [Phase 04]: get_record_file_list and get_record_calendar pre-built for Plan 04-02 MediaSource
 - [Phase 04]: Unmount SD button disabled by default (destructive action, matches format_sd pattern)
+- [Phase 04]: Browse-only MediaSource: async_resolve_media raises Unresolvable because PPPP has no HTTP; DRW file streaming deferred
+- [Phase 04]: MediaSource is NOT a Platform -- registered via manifest dependency + async_get_media_source factory, no PLATFORMS list change
 
 ### Pending Todos
 
@@ -110,6 +113,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T16:34:28.065Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-04-02T16:40:46.342Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None

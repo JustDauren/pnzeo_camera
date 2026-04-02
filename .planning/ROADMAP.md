@@ -84,7 +84,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md -- SD card management (unmount button, recording mode select, recording schedule service, CGI methods)
-- [ ] 04-02-PLAN.md -- MediaSource provider for browsing/downloading SD card recordings
+- [x] 04-02-PLAN.md -- MediaSource provider for browsing/downloading SD card recordings
 
 ### Phase 5: Two-Way Audio
 **Goal**: Users can listen to camera audio and talk through the camera from HA

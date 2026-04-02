@@ -39,9 +39,9 @@
 - [x] **SDCD-03**: Safely unmount SD card button
 - [x] **SDCD-04**: Recording mode setting (continuous/motion/schedule/off)
 - [x] **SDCD-05**: Recording schedule configuration (25 params)
-- [ ] **SDCD-06**: SD card recording list (by date/type)
-- [ ] **SDCD-07**: SD card recording calendar (RTGetSDRecordCalendar)
-- [ ] **SDCD-08**: SD card file download/playback via MediaSource
+- [x] **SDCD-06**: SD card recording list (by date/type)
+- [x] **SDCD-07**: SD card recording calendar (RTGetSDRecordCalendar)
+- [x] **SDCD-08**: SD card file download/playback via MediaSource
 
 ### Audio
 
@@ -147,9 +147,9 @@
 | SDCD-03 | Phase 4 | Complete |
 | SDCD-04 | Phase 4 | Complete |
 | SDCD-05 | Phase 4 | Complete |
-| SDCD-06 | Phase 4 | Pending |
-| SDCD-07 | Phase 4 | Pending |
-| SDCD-08 | Phase 4 | Pending |
+| SDCD-06 | Phase 4 | Complete |
+| SDCD-07 | Phase 4 | Complete |
+| SDCD-08 | Phase 4 | Complete |
 | AUDI-01 | Phase 5 | Pending |
 | AUDI-02 | Phase 5 | Pending |
 | AUDI-03 | Phase 5 | Pending |
