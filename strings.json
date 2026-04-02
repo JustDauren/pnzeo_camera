@@ -285,6 +285,112 @@
     "get_email_settings": {
       "name": "Get Email Settings",
       "description": "Retrieve current email notification configuration from camera (fires pnzeo_camera_email_settings event)"
+    },
+    "set_recording_schedule": {
+      "name": "Set Recording Schedule",
+      "description": "Configure SD card recording schedule (25 params for weekly schedule)",
+      "fields": {
+        "rec_sch_enable": {
+          "name": "Schedule Enable",
+          "description": "Enable scheduled recording (0=off, 1=on)"
+        },
+        "rec_sch_sun_0": {
+          "name": "Sunday Block 1",
+          "description": "Sunday recording block 1 bitmask"
+        },
+        "rec_sch_sun_1": {
+          "name": "Sunday Block 2",
+          "description": "Sunday recording block 2 bitmask"
+        },
+        "rec_sch_sun_2": {
+          "name": "Sunday Block 3",
+          "description": "Sunday recording block 3 bitmask"
+        },
+        "rec_sch_mon_0": {
+          "name": "Monday Block 1",
+          "description": "Monday recording block 1 bitmask"
+        },
+        "rec_sch_mon_1": {
+          "name": "Monday Block 2",
+          "description": "Monday recording block 2 bitmask"
+        },
+        "rec_sch_mon_2": {
+          "name": "Monday Block 3",
+          "description": "Monday recording block 3 bitmask"
+        },
+        "rec_sch_tue_0": {
+          "name": "Tuesday Block 1",
+          "description": "Tuesday recording block 1 bitmask"
+        },
+        "rec_sch_tue_1": {
+          "name": "Tuesday Block 2",
+          "description": "Tuesday recording block 2 bitmask"
+        },
+        "rec_sch_tue_2": {
+          "name": "Tuesday Block 3",
+          "description": "Tuesday recording block 3 bitmask"
+        },
+        "rec_sch_wed_0": {
+          "name": "Wednesday Block 1",
+          "description": "Wednesday recording block 1 bitmask"
+        },
+        "rec_sch_wed_1": {
+          "name": "Wednesday Block 2",
+          "description": "Wednesday recording block 2 bitmask"
+        },
+        "rec_sch_wed_2": {
+          "name": "Wednesday Block 3",
+          "description": "Wednesday recording block 3 bitmask"
+        },
+        "rec_sch_thu_0": {
+          "name": "Thursday Block 1",
+          "description": "Thursday recording block 1 bitmask"
+        },
+        "rec_sch_thu_1": {
+          "name": "Thursday Block 2",
+          "description": "Thursday recording block 2 bitmask"
+        },
+        "rec_sch_thu_2": {
+          "name": "Thursday Block 3",
+          "description": "Thursday recording block 3 bitmask"
+        },
+        "rec_sch_fri_0": {
+          "name": "Friday Block 1",
+          "description": "Friday recording block 1 bitmask"
+        },
+        "rec_sch_fri_1": {
+          "name": "Friday Block 2",
+          "description": "Friday recording block 2 bitmask"
+        },
+        "rec_sch_fri_2": {
+          "name": "Friday Block 3",
+          "description": "Friday recording block 3 bitmask"
+        },
+        "rec_sch_sat_0": {
+          "name": "Saturday Block 1",
+          "description": "Saturday recording block 1 bitmask"
+        },
+        "rec_sch_sat_1": {
+          "name": "Saturday Block 2",
+          "description": "Saturday recording block 2 bitmask"
+        },
+        "rec_sch_sat_2": {
+          "name": "Saturday Block 3",
+          "description": "Saturday recording block 3 bitmask"
+        },
+        "rec_sch_record_time": {
+          "name": "Record Time",
+          "description": "Recording segment length in seconds"
+        },
+        "rec_sch_mode": {
+          "name": "Schedule Mode",
+          "description": "0=continuous during schedule, 1=motion-triggered during schedule"
+        },
+        "rec_sch_prerecord": {
+          "name": "Pre-record",
+          "description": "Enable pre-recording on alarm trigger (0=off, 1=on)"
+        }
+      }
     }
   }
 }

@@ -9,7 +9,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN, MIRROR_MAP, RESOLUTION_MAP
 from .coordinator import PNZEOCoordinator
 from .entity import PNZEOEntity
-from .pppp_packets import IR_MODE_MAP, POWER_FREQ_MAP
+from .pppp_packets import IR_MODE_MAP, POWER_FREQ_MAP, RECORDING_MODE_MAP
 
 
 async def async_setup_entry(
@@ -22,6 +22,7 @@ async def async_setup_entry(
         PNZEOAlarmAction(coordinator),
         PNZEOIRMode(coordinator),
         PNZEOPowerFrequency(coordinator),
+        PNZEORecordingMode(coordinator),
     ])
 
 
@@ -157,4 +158,29 @@ class PNZEOPowerFrequency(PNZEOEntity, SelectEntity):
         rev = {v: k for k, v in POWER_FREQ_MAP.items()}
         if option in rev:
             await self.coordinator.device.client.set_power_freq(rev[option])
+            await self.coordinator.async_request_refresh()
+
+
+class PNZEORecordingMode(PNZEOEntity, SelectEntity):
+    """Recording mode select (off/continuous/motion/schedule)."""
+    _attr_icon = "mdi:record-rec"
+    _attr_options = list(RECORDING_MODE_MAP.values())
+
+    def __init__(self, coordinator: PNZEOCoordinator) -> None:
+        super().__init__(coordinator, "recording_mode", "Recording Mode")
+
+    @property
+    def current_option(self) -> str:
+        raw = self.coordinator.data.get("rec_mode")
+        if raw is not None:
+            try:
+                return RECORDING_MODE_MAP.get(int(raw), "Off")
+            except (ValueError, TypeError):
+                pass
+        return "Off"
+
+    async def async_select_option(self, option: str) -> None:
+        rev = {v: k for k, v in RECORDING_MODE_MAP.items()}
+        if option in rev:
+            await self.coordinator.device.client.set_recording_mode(rev[option])
             await self.coordinator.async_request_refresh()

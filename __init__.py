@@ -194,6 +194,47 @@ def _register_services(hass: HomeAssistant) -> None:
         schema=vol.Schema({}),
     )
 
+    # Recording schedule service (04-01)
+
+    async def handle_set_recording_schedule(call: ServiceCall) -> None:
+        for coordinator in hass.data[DOMAIN].values():
+            if isinstance(coordinator, PNZEOCoordinator):
+                await coordinator.device.client.set_recording_schedule(
+                    **{k: v for k, v in call.data.items()}
+                )
+                break
+
+    hass.services.async_register(
+        DOMAIN, "set_recording_schedule", handle_set_recording_schedule,
+        schema=vol.Schema({
+            vol.Optional("rec_sch_enable", default=1): vol.In([0, 1]),
+            vol.Optional("rec_sch_sun_0", default=0): int,
+            vol.Optional("rec_sch_sun_1", default=0): int,
+            vol.Optional("rec_sch_sun_2", default=0): int,
+            vol.Optional("rec_sch_mon_0", default=0): int,
+            vol.Optional("rec_sch_mon_1", default=0): int,
+            vol.Optional("rec_sch_mon_2", default=0): int,
+            vol.Optional("rec_sch_tue_0", default=0): int,
+            vol.Optional("rec_sch_tue_1", default=0): int,
+            vol.Optional("rec_sch_tue_2", default=0): int,
+            vol.Optional("rec_sch_wed_0", default=0): int,
+            vol.Optional("rec_sch_wed_1", default=0): int,
+            vol.Optional("rec_sch_wed_2", default=0): int,
+            vol.Optional("rec_sch_thu_0", default=0): int,
+            vol.Optional("rec_sch_thu_1", default=0): int,
+            vol.Optional("rec_sch_thu_2", default=0): int,
+            vol.Optional("rec_sch_fri_0", default=0): int,
+            vol.Optional("rec_sch_fri_1", default=0): int,
+            vol.Optional("rec_sch_fri_2", default=0): int,
+            vol.Optional("rec_sch_sat_0", default=0): int,
+            vol.Optional("rec_sch_sat_1", default=0): int,
+            vol.Optional("rec_sch_sat_2", default=0): int,
+            vol.Optional("rec_sch_record_time", default=600): int,
+            vol.Optional("rec_sch_mode", default=0): vol.In([0, 1]),
+            vol.Optional("rec_sch_prerecord", default=0): vol.In([0, 1]),
+        }),
+    )
+
     # WiFi, network, and user management services (02-03)
 
     async def handle_wifi_scan(call: ServiceCall) -> None:
