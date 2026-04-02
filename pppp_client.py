@@ -24,6 +24,7 @@ from typing import Any
 from .const import (
     ConnectionState,
     BACKOFF_BASE, BACKOFF_MAX_LAN, BACKOFF_MAX_CLOUD, MAX_RECONNECT_ATTEMPTS,
+    CH_CMD, CH_AUDIO, CH_TALK,
 )
 from .pppp_packets import (
     PktType,
@@ -116,8 +117,11 @@ class PNZEOClient:
         self._connection_method = "none"
         self._capabilities: dict = {}
         self._camera_params: dict = {}
-        self._drw_response: asyncio.Event = asyncio.Event()
-        self._drw_data: bytes = b""
+        self._cmd_response: asyncio.Event = asyncio.Event()
+        self._cmd_data: bytes = b""
+        self._audio_queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=50)
+        self._audio_streaming: bool = False
+        self._audio_format: dict | None = None
 
     @property
     def connected(self) -> bool:
@@ -198,7 +202,7 @@ class PNZEOClient:
             uid = encode_uid(self.device_id)
             punch = struct.pack(">BBH", 0xF1, PktType.PUNCH_PKT, len(uid)) + uid
 
-            self._drw_response.clear()
+            self._cmd_response.clear()
             for i in range(PUNCH_COUNT):
                 self._transport.sendto(punch, target)
                 if i % 3 == 2:
@@ -209,7 +213,7 @@ class PNZEOClient:
 
             if not self._protocol.got_p2p_rdy:
                 try:
-                    await asyncio.wait_for(self._drw_response.wait(), timeout=3.0)
+                    await asyncio.wait_for(self._cmd_response.wait(), timeout=3.0)
                 except asyncio.TimeoutError:
                     pass
 
@@ -253,6 +257,9 @@ class PNZEOClient:
 
     async def disconnect(self) -> None:
         """Disconnect and clean up all tasks."""
+        if self._audio_streaming:
+            await self.stop_audio_stream()
+
         if self._watchdog_task:
             self._watchdog_task.cancel()
             try:
@@ -444,16 +451,16 @@ class PNZEOClient:
         target = (self.host, self._cam_port)
 
         for _ in range(DRW_RETRY_MAX):
-            self._drw_response.clear()
-            self._drw_data = b""
+            self._cmd_response.clear()
+            self._cmd_data = b""
             self._transport.sendto(drw, target)
             self._transport.sendto(build_alive(), target)
             try:
                 await asyncio.wait_for(
-                    self._drw_response.wait(), timeout=DRW_RETRY_INTERVAL,
+                    self._cmd_response.wait(), timeout=DRW_RETRY_INTERVAL,
                 )
-                if self._drw_data:
-                    return parse_drw_cgi_response(self._drw_data)
+                if self._cmd_data:
+                    return parse_drw_cgi_response(self._cmd_data)
             except asyncio.TimeoutError:
                 pass
         return None
@@ -1050,9 +1057,96 @@ class PNZEOClient:
                 )
                 break
 
-    def _handle_drw_response(self, data: bytes) -> None:
-        self._drw_data = data
-        self._drw_response.set()
+    def _handle_drw_data(self, data: bytes, channel: int) -> None:
+        """Route DRW data by channel."""
+        if channel == CH_CMD:
+            # CGI command response -- signal _send_cgi
+            self._cmd_data = data
+            self._cmd_response.set()
+        elif channel == CH_AUDIO:
+            # Audio stream data -- queue for consumer
+            if self._audio_streaming:
+                if self._audio_format is None and len(data) > 7:
+                    # First audio packet -- detect format from inner header
+                    from .audio_codec import detect_audio_format
+                    drw_payload = data[7:]  # skip 7-byte DRW outer header
+                    self._audio_format = detect_audio_format(drw_payload)
+                    _LOGGER.debug("Audio format detected: %s", self._audio_format)
+                try:
+                    self._audio_queue.put_nowait(data)
+                except asyncio.QueueFull:
+                    # Drop oldest, keep newest (backpressure)
+                    try:
+                        self._audio_queue.get_nowait()
+                    except asyncio.QueueEmpty:
+                        pass
+                    try:
+                        self._audio_queue.put_nowait(data)
+                    except asyncio.QueueFull:
+                        pass
+        # CH_TALK (3): ignore -- camera does not send talk feedback
+        # CH_VIDEO (1): ignore -- video via RTSP, not DRW
+
+    # =====================================================================
+    # Audio streaming control
+    # =====================================================================
+
+    async def start_audio_stream(self) -> bool:
+        """Start receiving audio on CH_AUDIO. Returns True if command sent."""
+        if not self.connected or not self._transport:
+            return False
+        # Clear queue and state
+        while not self._audio_queue.empty():
+            try:
+                self._audio_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+        self._audio_format = None
+        self._audio_streaming = True
+        # Send binary start audio command on CH_CMD
+        from .pppp_packets import encode_command, build_drw
+        from .const import MSG_START_AUDIO
+        cmd = encode_command(MSG_START_AUDIO, b"\x01")  # mode=1 (A-law)
+        pkt = build_drw(CH_CMD, cmd, index=self._cmd_seq)
+        self._cmd_seq = (self._cmd_seq + 1) % 256
+        self._transport.sendto(pkt, (self.host, self._cam_port))
+        _LOGGER.info("Audio stream started on %s", self.host)
+        return True
+
+    async def stop_audio_stream(self) -> None:
+        """Stop receiving audio on CH_AUDIO."""
+        self._audio_streaming = False
+        if self.connected and self._transport:
+            from .pppp_packets import encode_command, build_drw
+            from .const import MSG_STOP_AUDIO
+            cmd = encode_command(MSG_STOP_AUDIO)
+            pkt = build_drw(CH_CMD, cmd, index=self._cmd_seq)
+            self._cmd_seq = (self._cmd_seq + 1) % 256
+            self._transport.sendto(pkt, (self.host, self._cam_port))
+        # Drain queue
+        while not self._audio_queue.empty():
+            try:
+                self._audio_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+        self._audio_format = None
+        _LOGGER.info("Audio stream stopped on %s", self.host)
+
+    async def send_talk_data(self, alaw_data: bytes) -> bool:
+        """Send A-law encoded audio data to camera on CH_TALK."""
+        if not self.connected or not self._transport:
+            return False
+        from .pppp_packets import build_drw
+        from .const import AUDIO_FRAME_SIZE
+        # Send in AUDIO_FRAME_SIZE chunks
+        offset = 0
+        while offset < len(alaw_data):
+            chunk = alaw_data[offset:offset + AUDIO_FRAME_SIZE]
+            pkt = build_drw(CH_TALK, chunk, index=self._cmd_seq)
+            self._cmd_seq = (self._cmd_seq + 1) % 256
+            self._transport.sendto(pkt, (self.host, self._cam_port))
+            offset += AUDIO_FRAME_SIZE
+        return True
 
 
 class _PNZEOProtocol(asyncio.DatagramProtocol):
@@ -1072,11 +1166,13 @@ class _PNZEOProtocol(asyncio.DatagramProtocol):
         if pkt_type in (PktType.PUNCH_PKT, PktType.P2P_RDY, PktType.P2P_RDY_ACK):
             if addr[0] == self.client.host:
                 self.got_p2p_rdy = True
-                self.client._drw_response.set()
+                self.client._cmd_response.set()
 
-        # DRW data from camera
+        # DRW data from camera -- route by channel
         elif pkt_type == PktType.DRW:
-            self.client._handle_drw_response(data)
+            if len(data) >= 3:
+                channel = data[2]
+                self.client._handle_drw_data(data, channel)
 
         # Keepalive from camera
         elif pkt_type == PktType.ALIVE:
