@@ -10,7 +10,7 @@
 - [x] **CONN-01**: Camera auto-reconnects on disconnect with exponential backoff
 - [x] **CONN-02**: Keepalive task never dies silently -- watchdog and logging
 - [x] **CONN-03**: Socket lifecycle managed with context managers / try-finally
-- [ ] **CONN-04**: Connection status exposed as binary_sensor (connected/disconnected)
+- [x] **CONN-04**: Connection status exposed as binary_sensor (connected/disconnected)
 - [x] **CONN-05**: Protocol state machine uses explicit ConnectionState enum
 
 ### Config Flow
@@ -26,15 +26,15 @@
 - [x] **ALRM-02**: Motion detection sensitivity setting (number entity, 1-10)
 - [x] **ALRM-03**: Full alarm settings via CGI (alarm schedule, zones)
 - [x] **ALRM-04**: Extended alarm settings (RTAlarmEXSetting -- 11 params)
-- [ ] **ALRM-05**: Motion detection binary_sensor (polling-based state)
-- [ ] **ALRM-06**: Alarm event entity (HA EventEntity for motion/GPIO/sound events)
+- [x] **ALRM-05**: Motion detection binary_sensor (polling-based state)
+- [x] **ALRM-06**: Alarm event entity (HA EventEntity for motion/GPIO/sound events)
 - [x] **ALRM-07**: Sound detection alarm settings
 - [x] **ALRM-08**: GPIO alarm settings
 - [x] **ALRM-09**: Alarm log retrieval
 
 ### SD Card Management
 
-- [ ] **SDCD-01**: SD card status sensor (total/used/free space)
+- [x] **SDCD-01**: SD card status sensor (total/used/free space)
 - [ ] **SDCD-02**: Format SD card button
 - [ ] **SDCD-03**: Safely unmount SD card button
 - [ ] **SDCD-04**: Recording mode setting (continuous/motion/schedule/off)
@@ -84,7 +84,7 @@
 ### Time & System
 
 - [x] **SYST-01**: Time/timezone sync from HA (RTSynchMobileTime)
-- [ ] **SYST-02**: Device info sensor (firmware version, model, capabilities)
+- [x] **SYST-02**: Device info sensor (firmware version, model, capabilities)
 - [x] **SYST-03**: Factory reset button (with confirmation)
 - [x] **SYST-04**: Reboot button (verify existing implementation)
 
@@ -127,7 +127,7 @@
 | CONN-01 | Phase 1 | Complete |
 | CONN-02 | Phase 1 | Complete |
 | CONN-03 | Phase 1 | Complete |
-| CONN-04 | Phase 3 | Pending |
+| CONN-04 | Phase 3 | Complete |
 | CONN-05 | Phase 1 | Complete |
 | CONF-01 | Phase 6 | Pending |
 | CONF-02 | Phase 6 | Pending |
@@ -137,12 +137,12 @@
 | ALRM-02 | Phase 2 | Complete |
 | ALRM-03 | Phase 2 | Complete |
 | ALRM-04 | Phase 2 | Complete |
-| ALRM-05 | Phase 3 | Pending |
-| ALRM-06 | Phase 3 | Pending |
+| ALRM-05 | Phase 3 | Complete |
+| ALRM-06 | Phase 3 | Complete |
 | ALRM-07 | Phase 2 | Complete |
 | ALRM-08 | Phase 2 | Complete |
 | ALRM-09 | Phase 2 | Complete |
-| SDCD-01 | Phase 3 | Pending |
+| SDCD-01 | Phase 3 | Complete |
 | SDCD-02 | Phase 4 | Pending |
 | SDCD-03 | Phase 4 | Pending |
 | SDCD-04 | Phase 4 | Pending |
@@ -171,7 +171,7 @@
 | NOTF-02 | Phase 2 | Complete |
 | NOTF-03 | Phase 2 | Complete |
 | SYST-01 | Phase 2 | Complete |
-| SYST-02 | Phase 3 | Pending |
+| SYST-02 | Phase 3 | Complete |
 | SYST-03 | Phase 2 | Complete |
 | SYST-04 | Phase 2 | Complete |
 | SNAP-01 | Phase 2 | Complete |
