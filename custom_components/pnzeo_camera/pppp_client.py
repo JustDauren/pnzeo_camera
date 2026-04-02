@@ -30,11 +30,12 @@ from .pppp_packets import (
 _LOGGER = logging.getLogger(__name__)
 
 KEEPALIVE_INTERVAL = 3
-PUNCH_COUNT = 8
-PUNCH_INTERVAL = 0.1
-DRW_RETRY_MAX = 20
+PUNCH_COUNT = 15       # Camera needs persistent punching
+PUNCH_INTERVAL = 0.12
+DRW_RETRY_MAX = 25
 DRW_RETRY_INTERVAL = 0.3
 LAN_SEARCH_PORT = 32108
+PUNCH_WAIT = 5.0       # Wait for P2P handshake response
 
 
 class PNZEOClient:
@@ -116,6 +117,10 @@ class PNZEOClient:
                 return False
 
             _LOGGER.debug("Camera port: %d", self._cam_port)
+            target = (self.host, self._cam_port)
+
+            # Small settle delay — camera may still be releasing previous session
+            await asyncio.sleep(0.5)
 
             # Step 2: F141 PUNCH → P2P handshake (same socket!)
             uid = encode_uid(self.device_id)
@@ -123,14 +128,24 @@ class PNZEOClient:
 
             self._drw_response.clear()
             self._protocol.got_p2p_rdy = False
-            for _ in range(PUNCH_COUNT):
-                self._transport.sendto(punch, (self.host, self._cam_port))
-                await asyncio.sleep(PUNCH_INTERVAL)
 
-            try:
-                await asyncio.wait_for(self._drw_response.wait(), timeout=3.0)
-            except asyncio.TimeoutError:
-                pass
+            # Send punches interleaved with keepalive
+            for i in range(PUNCH_COUNT):
+                self._transport.sendto(punch, target)
+                if i % 3 == 2:  # keepalive every 3rd punch
+                    self._transport.sendto(build_alive(), target)
+                await asyncio.sleep(PUNCH_INTERVAL)
+                if self._protocol.got_p2p_rdy:
+                    break
+
+            # Wait more if not yet ready
+            if not self._protocol.got_p2p_rdy:
+                try:
+                    await asyncio.wait_for(
+                        self._drw_response.wait(), timeout=PUNCH_WAIT,
+                    )
+                except asyncio.TimeoutError:
+                    pass
 
             if not self._protocol.got_p2p_rdy:
                 _LOGGER.warning(
