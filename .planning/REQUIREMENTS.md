@@ -35,10 +35,10 @@
 ### SD Card Management
 
 - [x] **SDCD-01**: SD card status sensor (total/used/free space)
-- [ ] **SDCD-02**: Format SD card button
-- [ ] **SDCD-03**: Safely unmount SD card button
-- [ ] **SDCD-04**: Recording mode setting (continuous/motion/schedule/off)
-- [ ] **SDCD-05**: Recording schedule configuration (25 params)
+- [x] **SDCD-02**: Format SD card button
+- [x] **SDCD-03**: Safely unmount SD card button
+- [x] **SDCD-04**: Recording mode setting (continuous/motion/schedule/off)
+- [x] **SDCD-05**: Recording schedule configuration (25 params)
 - [ ] **SDCD-06**: SD card recording list (by date/type)
 - [ ] **SDCD-07**: SD card recording calendar (RTGetSDRecordCalendar)
 - [ ] **SDCD-08**: SD card file download/playback via MediaSource
@@ -143,10 +143,10 @@
 | ALRM-08 | Phase 2 | Complete |
 | ALRM-09 | Phase 2 | Complete |
 | SDCD-01 | Phase 3 | Complete |
-| SDCD-02 | Phase 4 | Pending |
-| SDCD-03 | Phase 4 | Pending |
-| SDCD-04 | Phase 4 | Pending |
-| SDCD-05 | Phase 4 | Pending |
+| SDCD-02 | Phase 4 | Complete |
+| SDCD-03 | Phase 4 | Complete |
+| SDCD-04 | Phase 4 | Complete |
+| SDCD-05 | Phase 4 | Complete |
 | SDCD-06 | Phase 4 | Pending |
 | SDCD-07 | Phase 4 | Pending |
 | SDCD-08 | Phase 4 | Pending |

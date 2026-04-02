@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-04-02T16:19:41.151Z"
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-04-02T16:34:28.068Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 11
+  completed_plans: 10
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** Full camera control from HA -- install via HACS, enter password, everything works autonomously on Pi5
-**Current focus:** Phase 02 — cgi-command-expansion
+**Current focus:** Phase 04 — sd-card-features
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 04 (sd-card-features) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-02
 
 Progress: [..........] 0%
@@ -61,6 +61,7 @@ Progress: [..........] 0%
 | Phase 02 P04 | 3min | 2 tasks | 5 files |
 | Phase 03 P02 | 1min | 2 tasks | 1 files |
 | Phase 03 P01 | 2min | 2 tasks | 4 files |
+| Phase 04 P01 | 4min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Connection binary sensor overrides available=True to remain visible when camera disconnected
 - [Phase 03]: Event entity uses _handle_coordinator_update for motion_armed 0->1 transition detection
 - [Phase 03]: SD used sensor computed from total-free to avoid extra CGI query
+- [Phase 04]: Recording mode polling runs every coordinator cycle (not throttled like WiFi) since mode changes frequently
+- [Phase 04]: get_record_file_list and get_record_calendar pre-built for Plan 04-02 MediaSource
+- [Phase 04]: Unmount SD button disabled by default (destructive action, matches format_sd pattern)
 
 ### Pending Todos
 
@@ -106,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T16:19:34.766Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-04-02T16:34:28.065Z
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None
