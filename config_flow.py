@@ -60,7 +60,8 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
         self._discovered = await discover_cameras()
 
         if not self._discovered:
-            return self.async_abort(reason="no_devices_found")
+            # Fallback to manual entry instead of aborting
+            return await self.async_step_manual()
 
         if len(self._discovered) == 1:
             d = self._discovered[0]
