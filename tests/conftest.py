@@ -75,7 +75,7 @@ def client():
     return PNZEOClient(
         host="192.168.1.100",
         username="admin",
-        password="8888",
+        password="testpass",
         device_id="TESTDEVICE123",
     )
 

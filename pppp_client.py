@@ -900,7 +900,7 @@ class PNZEOClient:
     async def get_users(self) -> list[dict]:
         """Get camera user accounts (up to 3 slots).
 
-        Response format: user1=admin&pwd1=8888&user2=&pwd2=&user3=&pwd3=
+        Response format: user1=NAME&pwd1=PASS&user2=&pwd2=&user3=&pwd3=
         Returns list of dicts with slot and username (passwords NOT returned for security).
         """
         cgi = build_cgi_url(CGI_GET_USER, self.username, self.password)
