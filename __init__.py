@@ -5,6 +5,7 @@ Cloud is used ONLY for port discovery (one UDP query), all data stays on LAN.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import voluptuous as vol
@@ -71,6 +72,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         coordinator: PNZEOCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
+        # Cancel any in-flight reconnect task before tearing down the device
+        # so it doesn't race with disconnect() and leave a half-open transport.
+        task = coordinator._reconnect_task
+        if task and not task.done():
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
         await coordinator.device.async_teardown()
 
     return unload_ok

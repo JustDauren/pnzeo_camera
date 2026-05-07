@@ -183,17 +183,23 @@ class PNZEOConfigFlow(ConfigFlow, domain=DOMAIN):
             await client.disconnect()
 
     async def _do_pppp_check(self, client: PNZEOClient) -> bool | None:
-        """Actual PPPP login check. Captures capabilities on success."""
+        """Actual PPPP login check. Captures capabilities on success.
+
+        Returns:
+            True  — camera responded, password accepted (capabilities populated)
+            False — camera responded but rejected the password (invalid_auth)
+            None  — camera unreachable / no response (allow setup, retry later)
+        """
         connected = await client.connect()
-        if not connected:
-            self._capabilities = {}
-            return None  # Can't connect -- allow anyway, will retry later
-        # connect() already does CGI login -- if we're here, password was accepted
-        if client.connected:
+        if connected and client.connected:
             self._capabilities = client.capabilities
             return True
-        # Transport connected but CGI login failed
         self._capabilities = {}
+        # last_failure="auth" means camera explicitly rejected our credentials.
+        # Other reasons (discovery/p2p) are network problems we can't probe further
+        # in the config-flow; allow setup so the coordinator can retry later.
+        if client.last_failure == "auth":
+            return False
         return None
 
 

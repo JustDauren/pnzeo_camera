@@ -33,11 +33,39 @@ class PNZEOCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         super().__init__(hass, _LOGGER, name="PNZEO Camera", update_interval=SCAN_INTERVAL)
         self.device = device
         self._pppp_available = False
+        self._reconnect_task: asyncio.Task | None = None
 
     @property
     def pppp_available(self) -> bool:
         """Whether PPPP control channel is connected."""
         return self._pppp_available
+
+    def _ensure_reconnect_task(self) -> None:
+        """Spawn a background reconnect task if one is not already running.
+
+        Keeps the coordinator update fast: HA never blocks 20+ seconds on
+        connect() — entities just stay unavailable until reconnect succeeds.
+        """
+        if self._reconnect_task and not self._reconnect_task.done():
+            return
+        self._reconnect_task = self.hass.loop.create_task(self._reconnect())
+
+    async def _reconnect(self) -> None:
+        try:
+            await self.device.client.disconnect()
+            ok = await self.device.async_setup()
+            self._pppp_available = ok
+            if ok:
+                _LOGGER.info("PPPP reconnect succeeded for %s", self.device.host)
+                self.async_set_updated_data(self._build_data(self.device.client))
+            else:
+                _LOGGER.debug(
+                    "PPPP reconnect did not succeed for %s (last_failure=%s)",
+                    self.device.host, self.device.client.last_failure,
+                )
+        except Exception as ex:
+            _LOGGER.debug("PPPP reconnect crashed: %s", ex)
+            self._pppp_available = False
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch camera state via PPPP.
@@ -106,22 +134,12 @@ class PNZEOCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return self._build_data(client)
 
         if state in (ConnectionState.DISCONNECTED, ConnectionState.FAILED):
-            # Trigger reconnection
-            try:
-                await client.disconnect()
-                result = await self.device.async_setup()
-                self._pppp_available = result
-                if not result:
-                    _LOGGER.debug(
-                        "PPPP not available for %s. "
-                        "Control commands disabled, video still works via RTSP.",
-                        self.device.host,
-                    )
-                return self._build_data(client)
-            except Exception as ex:
-                _LOGGER.debug("PPPP setup failed: %s", ex)
-                self._pppp_available = False
-                return self._build_data(client)
+            # Kick off reconnection in the background; do NOT block the
+            # coordinator (connect() can take 20+ seconds). Entities stay on
+            # last-known data until reconnect publishes a new update.
+            self._pppp_available = False
+            self._ensure_reconnect_task()
+            return self._build_data(client)
 
         # Fallback for any unexpected state
         return self._build_data(client)

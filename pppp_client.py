@@ -53,8 +53,8 @@ _LOGGER = logging.getLogger(__name__)
 KEEPALIVE_INTERVAL = 3
 PUNCH_COUNT = 12
 PUNCH_INTERVAL = 0.15
-DRW_RETRY_MAX = 25
-DRW_RETRY_INTERVAL = 0.3
+DRW_RETRY_MAX = 6
+DRW_RETRY_INTERVAL = 0.5
 LAN_SEARCH_PORT = 32108
 CLOUD_TIMEOUT = 3
 CLOUD_P2P_SERVERS = [
@@ -122,6 +122,10 @@ class PNZEOClient:
         self._audio_queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=50)
         self._audio_streaming: bool = False
         self._audio_format: dict | None = None
+        # Last connect() failure reason — read by config_flow to distinguish
+        # invalid_auth from transport/discovery problems.
+        # Values: None (no failure / success), "discovery", "p2p", "auth".
+        self.last_failure: str | None = None
 
     @property
     def connected(self) -> bool:
@@ -172,19 +176,30 @@ class PNZEOClient:
     async def _do_connect(self) -> bool:
         """Single connection attempt with guaranteed cleanup on failure."""
         self._set_state(ConnectionState.CONNECTING)
+        await self._cancel_background_tasks()
+        self.last_failure = None
         transport = None
         try:
             await self._cleanup_transport()
 
+            _LOGGER.info(
+                "PPPP connect: %s (device_id=%s) — discovering data port",
+                self.host, self.device_id or "<none>",
+            )
             drw_port = await self._cloud_discover_port()
             if not drw_port:
-                _LOGGER.debug("Cloud port discovery failed, trying LAN only")
+                _LOGGER.info("Cloud port discovery: no result, falling back to LAN")
                 drw_port = await self._lan_discover_port()
 
             if not drw_port:
-                _LOGGER.warning("Cannot discover camera port for %s", self.host)
+                _LOGGER.warning(
+                    "Discovery failed for %s — neither cloud nor LAN returned a port",
+                    self.host,
+                )
+                self.last_failure = "discovery"
                 return False
 
+            _LOGGER.info("Using DRW port %d for %s", drw_port, self.host)
             self._cam_port = drw_port
 
             loop = asyncio.get_running_loop()
@@ -203,8 +218,10 @@ class PNZEOClient:
             punch = struct.pack(">BBH", 0xF1, PktType.PUNCH_PKT, len(uid)) + uid
 
             self._cmd_response.clear()
+            sent = 0
             for i in range(PUNCH_COUNT):
                 self._transport.sendto(punch, target)
+                sent += 1
                 if i % 3 == 2:
                     self._transport.sendto(build_alive(), target)
                 await asyncio.sleep(PUNCH_INTERVAL)
@@ -212,26 +229,40 @@ class PNZEOClient:
                     break
 
             if not self._protocol.got_p2p_rdy:
+                _LOGGER.debug(
+                    "P2P RDY not seen after %d punches to %s:%d, waiting up to 3s",
+                    sent, self.host, self._cam_port,
+                )
                 try:
                     await asyncio.wait_for(self._cmd_response.wait(), timeout=3.0)
                 except asyncio.TimeoutError:
                     pass
 
             if not self._protocol.got_p2p_rdy:
-                _LOGGER.warning("P2P handshake failed with %s:%d", self.host, self._cam_port)
+                _LOGGER.warning(
+                    "P2P handshake failed with %s:%d (sent %d punches, no RDY)",
+                    self.host, self._cam_port, sent,
+                )
+                self.last_failure = "p2p"
                 return False
 
-            _LOGGER.debug("P2P handshake OK with %s:%d", self.host, self._cam_port)
+            _LOGGER.info(
+                "P2P handshake OK with %s:%d (after %d punches)",
+                self.host, self._cam_port, sent,
+            )
 
             # Keepalive burst before CGI
             for _ in range(8):
                 self._transport.sendto(build_alive(), target)
                 await asyncio.sleep(0.15)
 
-            # CGI login
+            # CGI login (sets self.last_failure to "auth" or "p2p" on failure)
             self._set_state(ConnectionState.AUTHENTICATING)
             if not await self._cgi_login():
-                _LOGGER.warning("CGI login failed on %s:%d", self.host, self._cam_port)
+                _LOGGER.warning(
+                    "CGI login failed on %s:%d (last_failure=%s)",
+                    self.host, self._cam_port, self.last_failure,
+                )
                 return False
 
             self._connection_method = "lan"
@@ -260,21 +291,7 @@ class PNZEOClient:
         if self._audio_streaming:
             await self.stop_audio_stream()
 
-        if self._watchdog_task:
-            self._watchdog_task.cancel()
-            try:
-                await self._watchdog_task
-            except asyncio.CancelledError:
-                pass
-            self._watchdog_task = None
-
-        if self._keepalive_task:
-            self._keepalive_task.cancel()
-            try:
-                await self._keepalive_task
-            except asyncio.CancelledError:
-                pass
-            self._keepalive_task = None
+        await self._cancel_background_tasks()
 
         if self._transport and self._cam_port:
             try:
@@ -296,6 +313,27 @@ class PNZEOClient:
             self._transport = None
         self._protocol = None
         self._connection_method = "none"
+
+    async def _cancel_background_tasks(self) -> None:
+        """Cancel keepalive and watchdog tasks. Safe to call from inside them.
+
+        Skips the currently-running task to avoid self-cancellation deadlock —
+        callers running inside one of these tasks will simply continue, but
+        their references on self are cleared so a fresh _do_connect spawns
+        replacements without leaking the old task chain.
+        """
+        current = asyncio.current_task()
+        for attr in ("_keepalive_task", "_watchdog_task"):
+            task = getattr(self, attr, None)
+            if task is None or task is current:
+                continue
+            if not task.done():
+                task.cancel()
+                try:
+                    await task
+                except (asyncio.CancelledError, Exception):
+                    pass
+            setattr(self, attr, None)
 
     # =====================================================================
     # Reconnection and Watchdog
@@ -331,35 +369,43 @@ class PNZEOClient:
         return False
 
     async def _connection_watchdog(self) -> None:
-        """Monitor connection health. Restart keepalive or trigger reconnect."""
+        """Monitor keepalive task. Spawn reconnect on repeated failures.
+
+        Reconnect is launched as a separate task and the watchdog exits —
+        this keeps reconnect off the watchdog's stack so _do_connect can
+        cancel/replace tasks without self-cancelling the watchdog.
+
+        Order is "check then sleep" so a watchdog spinning up next to a
+        long-dead keepalive_task (e.g. after restart) reports immediately.
+        """
         consecutive_failures = 0
-        while self._state in (ConnectionState.CONNECTED, ConnectionState.RECONNECTING):
+        while self._state == ConnectionState.CONNECTED:
             try:
-                if self._state == ConnectionState.CONNECTED:
-                    if not self._keepalive_task or self._keepalive_task.done():
+                if not self._keepalive_task or self._keepalive_task.done():
+                    consecutive_failures += 1
+                    _LOGGER.warning(
+                        "Keepalive task died at %s (%s) [%d/3]",
+                        time.strftime("%H:%M:%S"),
+                        self.host,
+                        consecutive_failures,
+                    )
+                    if consecutive_failures >= 3:
                         _LOGGER.warning(
-                            "Keepalive task died at %s (%s). Restarting.",
-                            time.strftime("%H:%M:%S"), self.host,
+                            "Triggering reconnect for %s after 3 keepalive failures",
+                            self.host,
                         )
-                        consecutive_failures += 1
-                        if consecutive_failures >= 3:
-                            _LOGGER.warning(
-                                "3 keepalive failures (%s). Triggering reconnect.",
-                                self.host,
-                            )
-                            await self._reconnect_with_backoff()
-                            consecutive_failures = 0
-                        elif self._state == ConnectionState.CONNECTED:
-                            self._keepalive_task = asyncio.create_task(
-                                self._keepalive_loop()
-                            )
-                    else:
-                        consecutive_failures = 0
+                        asyncio.create_task(self._reconnect_with_backoff())
+                        return
+                    if self._state == ConnectionState.CONNECTED:
+                        self._keepalive_task = asyncio.create_task(
+                            self._keepalive_loop()
+                        )
+                else:
+                    consecutive_failures = 0
 
                 await asyncio.sleep(KEEPALIVE_INTERVAL * 2)
-
             except asyncio.CancelledError:
-                break
+                return
             except Exception as ex:
                 _LOGGER.warning("Watchdog error (%s): %s", self.host, ex)
                 await asyncio.sleep(KEEPALIVE_INTERVAL)
@@ -369,71 +415,109 @@ class PNZEOClient:
     # =====================================================================
 
     async def _cloud_discover_port(self) -> int | None:
-        """Get camera's DRW port from cloud P2P server (1 UDP query, ~3s)."""
+        """Get camera's DRW port from cloud P2P server (1 UDP query, ~3s).
+
+        Non-blocking: uses loop.sock_* to avoid stalling the event loop.
+        Parses F140 PUNCH_TO as [IP_4 BE][PORT_2 BE] starting at payload[0]
+        (matches build_punch_to in pppp_packets.py).
+        """
         if not self.device_id:
+            _LOGGER.debug("Cloud discovery skipped: no device_id")
             return None
         uid = encode_uid(self.device_id)
+        loop = asyncio.get_running_loop()
 
         for server_host, server_port in CLOUD_P2P_SERVERS:
+            sock: socket.socket | None = None
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.settimeout(CLOUD_TIMEOUT)
+                sock.setblocking(False)
 
-                # Hello
-                sock.sendto(b"\xf1\x00\x00\x00", (server_host, server_port))
-                sock.recvfrom(4096)
-
-                # P2P Connect
+                # F120 P2P Connect (request camera location). Some servers also
+                # accept a F100 hello first; skipping it shortens the path and
+                # most CS2-derived servers respond to F120 directly.
                 p2p_payload = uid + b"\x00" * 16
                 p2p = struct.pack(">BBH", 0xF1, 0x20, len(p2p_payload)) + p2p_payload
-                sock.sendto(p2p, (server_host, server_port))
+                await loop.sock_sendto(sock, p2p, (server_host, server_port))
 
-                # Wait for F140 with camera's LAN IP:port
-                for _ in range(5):
-                    data, _ = sock.recvfrom(4096)
-                    if len(data) >= 12 and data[0] == 0xF1 and data[1] == 0x40:
+                deadline = loop.time() + CLOUD_TIMEOUT
+                while loop.time() < deadline:
+                    remaining = deadline - loop.time()
+                    if remaining <= 0:
+                        break
+                    try:
+                        data, _ = await asyncio.wait_for(
+                            loop.sock_recvfrom(sock, 4096), timeout=remaining,
+                        )
+                    except asyncio.TimeoutError:
+                        break
+                    if len(data) >= 10 and data[0] == 0xF1 and data[1] == 0x40:
                         payload = data[4:]
-                        if len(payload) >= 8:
-                            port = struct.unpack("<H", payload[2:4])[0]
-                            ip_val = struct.unpack("<I", payload[4:8])[0]
-                            ip = socket.inet_ntoa(struct.pack("!I", ip_val))
-                            if ip == self.host:
-                                sock.close()
-                                _LOGGER.debug("Cloud: camera DRW port = %d", port)
-                                return port
-                sock.close()
+                        # build_punch_to: payload = [IP_4 BE][PORT_2 BE][...padding]
+                        ip = ".".join(str(b) for b in payload[0:4])
+                        port = struct.unpack(">H", payload[4:6])[0]
+                        _LOGGER.info(
+                            "Cloud %s: camera %s reported at %s:%d",
+                            server_host, self.device_id, ip, port,
+                        )
+                        return port
+                _LOGGER.debug("Cloud %s: no F140 within %ds", server_host, CLOUD_TIMEOUT)
             except Exception as ex:
                 _LOGGER.debug("Cloud discovery via %s failed: %s", server_host, ex)
+            finally:
+                if sock is not None:
+                    try:
+                        sock.close()
+                    except Exception:
+                        pass
+        return None
+
+    async def _lan_discover_port(self) -> int | None:
+        """Fallback: get port from LAN Search response (non-blocking)."""
+        loop = asyncio.get_running_loop()
+        sock: socket.socket | None = None
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.setblocking(False)
+            await loop.sock_sendto(
+                sock, build_lan_search(), (self.host, LAN_SEARCH_PORT),
+            )
+            _, (_, port) = await asyncio.wait_for(
+                loop.sock_recvfrom(sock, 4096), timeout=3.0,
+            )
+            _LOGGER.info("LAN: %s answered from port %d", self.host, port)
+            return port
+        except (asyncio.TimeoutError, OSError) as ex:
+            _LOGGER.debug("LAN port discovery for %s failed: %s", self.host, ex)
+            return None
+        finally:
+            if sock is not None:
                 try:
                     sock.close()
                 except Exception:
                     pass
-        return None
-
-    async def _lan_discover_port(self) -> int | None:
-        """Fallback: get port from LAN Search response."""
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.settimeout(3)
-            sock.sendto(build_lan_search(), (self.host, LAN_SEARCH_PORT))
-            _, (_, port) = sock.recvfrom(4096)
-            sock.close()
-            _LOGGER.debug("LAN: camera port = %d", port)
-            return port
-        except Exception:
-            return None
 
     # =====================================================================
     # CGI Commands
     # =====================================================================
 
     async def _cgi_login(self) -> bool:
+        """Authenticate via check_user.cgi.
+
+        Returns True on success. On failure, sets self.last_failure to
+        "auth" if camera responded with rejection, "p2p" if no response
+        at all (transport up but DRW channel not delivering).
+        """
         cgi = build_cgi_url(CGI_CHECK_USER, self.username, self.password)
         resp = await self._send_cgi(cgi)
-        if resp and resp.get("success"):
+        if resp is None:
+            self.last_failure = "p2p"
+            return False
+        if resp.get("success"):
             if "json" in resp:
                 self._capabilities = resp["json"]
             return True
+        self.last_failure = "auth"
         return False
 
     async def login(self, username: str, password: str) -> bool:
